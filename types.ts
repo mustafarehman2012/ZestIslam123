@@ -4,6 +4,14 @@ export interface Message {
   role: 'user' | 'model';
   content: string;
   timestamp: Date;
+  conversationId?: string;
+}
+
+export interface Conversation {
+  id: string;
+  title: string;
+  lastMessage: string;
+  timestamp: Date;
 }
 
 export interface PrayerTimeData {
@@ -24,6 +32,16 @@ export interface QuranVerse {
   explanation: string;
 }
 
+export interface Hadith {
+  book: string;
+  hadithNumber: string;
+  chapter: string;
+  arabicText: string;
+  translation: string;
+  explanation: string;
+  grade: string;
+}
+
 export interface GeneratedDua {
   title: string;
   arabic: string;
@@ -31,16 +49,31 @@ export interface GeneratedDua {
   translation: string;
 }
 
+export interface UserProfile {
+  name: string;
+  email: string;
+  joinedDate: Date;
+}
+
 export enum AppView {
   HOME = 'HOME',
   QURAN = 'QURAN',
+  HADEES = 'HADEES',
+  UNIFIED = 'UNIFIED',
   CHAT = 'CHAT',
   DUA = 'DUA',
   PRAYER = 'PRAYER',
   THUMBNAIL = 'THUMBNAIL',
   MEDIA = 'MEDIA',
   FINDER = 'FINDER',
-  LIVE = 'LIVE'
+  LIVE = 'LIVE',
+  TASBIH = 'TASBIH',
+  NAMES = 'NAMES',
+  DREAM = 'DREAM',
+  QUIZ = 'QUIZ',
+  ABOUT = 'ABOUT',
+  CONTACT = 'CONTACT',
+  LOGIN = 'LOGIN'
 }
 
 export interface GeoLocation {
@@ -58,4 +91,70 @@ export interface TadabburResult {
   english: TadabburContent;
   urdu: TadabburContent;
   hinglish: TadabburContent;
+}
+
+export interface SharhResult {
+  hadithReference: string;
+  english: TadabburContent;
+  urdu: TadabburContent;
+  hinglish: TadabburContent;
+}
+
+export interface DhikrSuggestion {
+  arabic: string;
+  transliteration: string;
+  meaning: string;
+  benefit: string;
+  target: number;
+}
+
+// Multilingual Interfaces
+export interface NameInsightContent {
+  meaning: string;
+  reflection: string;
+  application: string;
+}
+
+export interface NameInsight {
+  name: string;
+  english: NameInsightContent;
+  urdu: NameInsightContent;
+  hinglish: NameInsightContent;
+}
+
+export interface DreamContent {
+    interpretation: string;
+    symbols: string[];
+    advice: string;
+}
+
+export interface DreamResult {
+    english: DreamContent;
+    urdu: DreamContent;
+    hinglish: DreamContent;
+}
+
+export interface QuizQuestion {
+    question: string;
+    options: string[];
+    correctIndex: number;
+    explanation: string;
+}
+
+// --- SURAH READER TYPES ---
+export interface SurahMeta {
+    number: number;
+    name: string;
+    englishName: string;
+    englishNameTranslation: string;
+    numberOfAyahs: number;
+    revelationType: string;
+}
+
+export interface FullSurahVerse {
+    number: number;
+    text: string; // Arabic
+    translation: string; // English
+    numberInSurah: number;
+    audioSecondary?: string[]; // Optional audio sources if available from API
 }
