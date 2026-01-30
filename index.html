@@ -26,15 +26,30 @@
     </script>
     <link href="https://fonts.googleapis.com/css2?family=Amiri:ital,wght@0,400;0,700;1,400&family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <style>
+      :root {
+        --emerald-500: #10b981;
+        --slate-100: #f1f5f9;
+        --slate-200: #e2e8f0;
+        --slate-400: #94a3b8;
+        --slate-800: #1e293b;
+        --slate-900: #0f172a;
+      }
+
       body {
         font-family: 'Plus Jakarta Sans', sans-serif;
-        @apply bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100;
+        background-color: #f8fafc;
+        color: #0f172a;
+      }
+
+      .dark body {
+        background-color: #020617;
+        color: #f1f5f9;
       }
       
       /* Optimized Arabic Typography */
       .font-quran {
         font-family: 'Amiri', serif;
-        line-height: 2.2; /* increased for diacritics */
+        line-height: 2.2;
         direction: rtl;
         font-feature-settings: "kern" 1, "liga" 1;
       }
@@ -62,12 +77,29 @@
         background: #94a3b8;
       }
 
+      .custom-scrollbar::-webkit-scrollbar {
+        width: 5px;
+      }
+      .custom-scrollbar::-webkit-scrollbar-track {
+        background: transparent;
+      }
+      .custom-scrollbar::-webkit-scrollbar-thumb {
+        background: #e2e8f0;
+        border-radius: 9999px;
+      }
+      .dark .custom-scrollbar::-webkit-scrollbar-thumb {
+        background: #1e293b;
+      }
+
       /* Animation Utilities */
       .animate-fade-in {
         animation: fadeIn 0.4s ease-out forwards;
       }
       .animate-fade-in-up {
         animation: fadeInUp 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+      }
+      .animate-fade-in-left {
+        animation: fadeInLeft 0.4s ease-out forwards;
       }
       
       @keyframes fadeIn {
@@ -77,6 +109,10 @@
       @keyframes fadeInUp {
         from { opacity: 0; transform: translateY(15px); }
         to { opacity: 1; transform: translateY(0); }
+      }
+      @keyframes fadeInLeft {
+        from { opacity: 0; transform: translateX(20px); }
+        to { opacity: 1; transform: translateX(0); }
       }
 
       /* Glassmorphism Utilities */
@@ -89,14 +125,21 @@
         background: rgba(15, 23, 42, 0.6);
       }
       
-      /* Hide Scrollbar for Chrome, Safari and Opera */
+      /* Pattern Overlay - Using CSS Grid Pattern instead of images to avoid 404 */
+      .bg-pattern {
+        background-image: radial-gradient(#cbd5e1 0.5px, transparent 0.5px);
+        background-size: 24px 24px;
+      }
+      .dark .bg-pattern {
+        background-image: radial-gradient(#334155 0.5px, transparent 0.5px);
+      }
+
       .no-scrollbar::-webkit-scrollbar {
           display: none;
       }
-      /* Hide scrollbar for IE, Edge and Firefox */
       .no-scrollbar {
-          -ms-overflow-style: none;  /* IE and Edge */
-          scrollbar-width: none;  /* Firefox */
+          -ms-overflow-style: none;
+          scrollbar-width: none;
       }
     </style>
   <script type="importmap">
@@ -113,7 +156,7 @@
 }
 </script>
 </head>
-  <body>
+  <body class="bg-pattern">
     <div id="root"></div>
   </body>
 </html>
