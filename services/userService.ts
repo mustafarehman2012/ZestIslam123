@@ -53,8 +53,7 @@ export const signInUser = async (email: string, password: string): Promise<{ use
         const { data, error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) {
             console.warn("Supabase signin failed:", error.message);
-             // Don't fallback to local on wrong password, only on network/config error logic ideally, 
-             // but for this hybrid app we return the specific error.
+             // Don't fallback to local on wrong password
              if (error.message.includes("Invalid login")) {
                  return { user: null, error: "Invalid email or password" };
              }
@@ -85,15 +84,37 @@ export const signInUser = async (email: string, password: string): Promise<{ use
 export const resetUserPassword = async (email: string): Promise<{ success: boolean, error: string | null }> => {
     if (supabase) {
         const { error } = await supabase.auth.resetPasswordForEmail(email, {
-            redirectTo: window.location.origin, // Redirects back to app after clicking email link
+            redirectTo: window.location.origin, 
         });
         
         if (error) return { success: false, error: error.message };
         return { success: true, error: null };
     }
-    
-    // Local fallback mock (simulated success for non-Supabase environments)
     return { success: true, error: null };
+}
+
+export const updateUserPassword = async (password: string) => {
+    if (supabase) {
+        const { error } = await supabase.auth.updateUser({
+            password: password
+        });
+
+        if (error) {
+            return { success: false, error: error.message };
+        }
+        return { success: true, error: null };
+    }
+    return { success: false, error: "Service unavailable" };
+};
+
+export const subscribeToAuthChanges = (callback: (event: string, session: any) => void) => {
+    if (supabase) {
+        const { data } = supabase.auth.onAuthStateChange((event, session) => {
+            callback(event, session);
+        });
+        return data.subscription;
+    }
+    return null;
 }
 
 export const signOutUser = async () => {
@@ -105,7 +126,6 @@ export const signOutUser = async () => {
 // --- CONVERSATION MANAGEMENT ---
 
 export const getUserConversations = async (email: string): Promise<Conversation[]> => {
-    // 1. Try Supabase
     if (supabase) {
         const { data, error } = await supabase
             .from('conversations')
@@ -123,7 +143,6 @@ export const getUserConversations = async (email: string): Promise<Conversation[
         }
     }
 
-    // 2. Local Storage Fallback
     const stored = localStorage.getItem(`zestislam_conversations_${email}`);
     if (stored) {
         return JSON.parse(stored).map((c: any) => ({
@@ -156,9 +175,7 @@ export const createConversation = async (email: string, title: string, id?: stri
         }
     }
 
-    // Local Fallback
     const existing = await getUserConversations(email);
-    // Deduplicate in case of race conditions
     const updated = [newConv, ...existing.filter(c => c.id !== newConv.id)];
     localStorage.setItem(`zestislam_conversations_${email}`, JSON.stringify(updated));
     return newConv;
@@ -169,7 +186,6 @@ export const updateConversationTitle = async (email: string, conversationId: str
         await supabase.from('conversations').update({ title: newTitle }).eq('id', conversationId);
     }
     
-    // Local Update
     const existing = await getUserConversations(email);
     const updated = existing.map(c => c.id === conversationId ? { ...c, title: newTitle } : c);
     localStorage.setItem(`zestislam_conversations_${email}`, JSON.stringify(updated));
@@ -178,16 +194,12 @@ export const updateConversationTitle = async (email: string, conversationId: str
 export const deleteConversation = async (email: string, conversationId: string) => {
     if (supabase) {
         await supabase.from('conversations').delete().eq('id', conversationId);
-        // Supabase typically cascades delete to messages, but just in case:
         await supabase.from('messages').delete().eq('conversation_id', conversationId);
     }
 
-    // Local
     const existing = await getUserConversations(email);
     const updated = existing.filter(c => c.id !== conversationId);
     localStorage.setItem(`zestislam_conversations_${email}`, JSON.stringify(updated));
-    
-    // Cleanup messages
     localStorage.removeItem(`zestislam_messages_${conversationId}`);
 }
 
@@ -212,7 +224,6 @@ export const getConversationMessages = async (conversationId: string): Promise<M
         }
     }
 
-    // Local Fallback
     const stored = localStorage.getItem(`zestislam_messages_${conversationId}`);
     if (stored) {
         return JSON.parse(stored).map((m: any) => ({
@@ -224,13 +235,10 @@ export const getConversationMessages = async (conversationId: string): Promise<M
 };
 
 export const saveUserChatMessage = async (email: string, conversationId: string, message: Message, isNewConversation = false, title = '') => {
-    
-    // Ensure conversation exists locally if it's new
     if (isNewConversation) {
         await createConversation(email, title, conversationId);
     }
 
-    // Save Message
     if (supabase) {
         await supabase.from('messages').insert({
             conversation_id: conversationId,
@@ -241,31 +249,26 @@ export const saveUserChatMessage = async (email: string, conversationId: string,
             id: message.id 
         });
         
-        // Update conversation timestamp/last message
         await supabase.from('conversations').update({
             last_message: message.content.substring(0, 50),
             updated_at: new Date().toISOString()
         }).eq('id', conversationId);
     }
 
-    // Local Fallback
     const history = await getConversationMessages(conversationId);
     const updatedMsgs = [...history, message];
     localStorage.setItem(`zestislam_messages_${conversationId}`, JSON.stringify(updatedMsgs));
 
-    // Update Conversation List (Last Message) locally
     const conversations = await getUserConversations(email);
     const convIndex = conversations.findIndex(c => c.id === conversationId);
     
     if (convIndex >= 0) {
         conversations[convIndex].lastMessage = message.content.substring(0, 50) + '...';
         conversations[convIndex].timestamp = new Date();
-        // Move to top
         const active = conversations.splice(convIndex, 1)[0];
         conversations.unshift(active);
         localStorage.setItem(`zestislam_conversations_${email}`, JSON.stringify(conversations));
     } else if (isNewConversation) {
-        // Fallback for new conversation update
         const newConv: Conversation = {
             id: conversationId,
             title: title || 'New Chat',
@@ -279,14 +282,32 @@ export const saveUserChatMessage = async (email: string, conversationId: string,
     }
 };
 
-export const getUserChatHistory = async (email: string): Promise<Message[]> => {
-    const saved = localStorage.getItem(`zestislam_chat_history_${email}`);
-    if (saved) {
-        return JSON.parse(saved).map((m: any) => ({ ...m, timestamp: new Date(m.timestamp) }));
-    }
-    return [];
-};
+// --- CONTACT FORM ---
 
-export const clearUserChatHistory = async (email: string) => {
-    localStorage.removeItem(`zestislam_chat_history_${email}`);
-};
+export const sendContactMessage = async (name: string, email: string, message: string): Promise<{ success: boolean, error?: string }> => {
+    // 1. Try to save to Supabase 'contact_messages' table
+    if (supabase) {
+        try {
+            const { error } = await supabase.from('contact_messages').insert({
+                name,
+                email,
+                message,
+                created_at: new Date().toISOString()
+            });
+            
+            if (error) {
+                // Log the actual error message clearly so we know why it failed (e.g. table missing)
+                // Returning success: false triggers the mailto fallback in App.tsx
+                console.warn("Supabase Contact Error (Switching to Mailto):", error.message || JSON.stringify(error));
+                return { success: false, error: error.message };
+            }
+            return { success: true };
+        } catch (e: any) {
+            console.error("Supabase Unexpected Error:", e);
+            return { success: false, error: e.message || "Unknown error" };
+        }
+    }
+    
+    // If Supabase is not connected, return false to trigger mailto fallback
+    return { success: false, error: "Database not connected" };
+}

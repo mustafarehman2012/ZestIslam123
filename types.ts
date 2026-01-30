@@ -1,4 +1,3 @@
-
 export interface Message {
   id: string;
   role: 'user' | 'model';
@@ -42,6 +41,15 @@ export interface Hadith {
   grade: string;
 }
 
+export interface HadithBook {
+    id: string;
+    name: string;
+    arabicName: string;
+    description: string;
+    totalHadiths: number;
+    editionId: string;
+}
+
 export interface GeneratedDua {
   title: string;
   arabic: string;
@@ -71,9 +79,11 @@ export enum AppView {
   NAMES = 'NAMES',
   DREAM = 'DREAM',
   QUIZ = 'QUIZ',
+  ZAKAT = 'ZAKAT',
   ABOUT = 'ABOUT',
   CONTACT = 'CONTACT',
-  LOGIN = 'LOGIN'
+  LOGIN = 'LOGIN',
+  UPDATE_PASSWORD = 'UPDATE_PASSWORD'
 }
 
 export interface GeoLocation {
@@ -108,30 +118,17 @@ export interface DhikrSuggestion {
   target: number;
 }
 
-// Multilingual Interfaces
-export interface NameInsightContent {
-  meaning: string;
-  reflection: string;
-  application: string;
-}
-
 export interface NameInsight {
   name: string;
-  english: NameInsightContent;
-  urdu: NameInsightContent;
-  hinglish: NameInsightContent;
-}
-
-export interface DreamContent {
-    interpretation: string;
-    symbols: string[];
-    advice: string;
+  english: { meaning: string; reflection: string; application: string };
+  urdu: { meaning: string; reflection: string; application: string };
+  hinglish: { meaning: string; reflection: string; application: string };
 }
 
 export interface DreamResult {
-    english: DreamContent;
-    urdu: DreamContent;
-    hinglish: DreamContent;
+    english: { interpretation: string; symbols: string[]; advice: string };
+    urdu: { interpretation: string; symbols: string[]; advice: string };
+    hinglish: { interpretation: string; symbols: string[]; advice: string };
 }
 
 export interface QuizQuestion {
@@ -141,7 +138,6 @@ export interface QuizQuestion {
     explanation: string;
 }
 
-// --- SURAH READER TYPES ---
 export interface SurahMeta {
     number: number;
     name: string;
@@ -153,8 +149,7 @@ export interface SurahMeta {
 
 export interface FullSurahVerse {
     number: number;
-    text: string; // Arabic
-    translation: string; // English
+    text: string;
+    translation: string;
     numberInSurah: number;
-    audioSecondary?: string[]; // Optional audio sources if available from API
 }

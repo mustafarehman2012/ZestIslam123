@@ -4,7 +4,7 @@ import { Send, Bot, Loader2, Sparkles, Trash2, Mic, MicOff, User, Lock, LogIn, P
 import { getScholarChatResponse, generateChatTitle } from '../services/geminiService';
 import { getUserConversations, getConversationMessages, saveUserChatMessage, deleteConversation, updateConversationTitle } from '../services/userService';
 import { Message, UserProfile, Conversation } from '../types';
-import { parse } from 'marked';
+import { marked } from 'marked';
 
 interface IslamicChatProps {
     user: UserProfile | null;
@@ -112,10 +112,12 @@ const IslamicChat: React.FC<IslamicChatProps> = ({ user, onLoginClick }) => {
     scrollToBottom();
   }, [messages, loading]);
 
-  const handleSend = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!input.trim()) return;
+  const sendMessage = async (text: string) => {
+    if (!text.trim()) return;
 
+    // Clear input
+    setInput('');
+    
     let activeId = currentConversationId;
     let isNew = false;
     let title = 'New Conversation';
@@ -127,19 +129,18 @@ const IslamicChat: React.FC<IslamicChatProps> = ({ user, onLoginClick }) => {
 
     if (user && !conversations.find(c => c.id === activeId)) {
         isNew = true;
-        title = input.slice(0, 20) + '...'; // Temporary title
+        title = text.slice(0, 20) + '...'; // Temporary title
     }
 
     const userMsg: Message = {
         id: Date.now().toString(),
         role: 'user',
-        content: input,
+        content: text,
         timestamp: new Date(),
         conversationId: activeId
     };
 
     setMessages(prev => [...prev, userMsg]);
-    setInput('');
     setLoading(true);
 
     if (user && activeId) {
@@ -158,6 +159,9 @@ const IslamicChat: React.FC<IslamicChatProps> = ({ user, onLoginClick }) => {
     }
 
     // Get Response
+    // We use the current 'messages' state (which doesn't have the new msg yet due to closure) 
+    // but the API expects history + new prompt separate, or full history. 
+    // our service takes (history, message).
     const history = messages.map(m => ({ role: m.role, content: m.content }));
     const response = await getScholarChatResponse(history, userMsg.content);
 
@@ -175,6 +179,11 @@ const IslamicChat: React.FC<IslamicChatProps> = ({ user, onLoginClick }) => {
     if (user && activeId) {
         await saveUserChatMessage(user.email, activeId, botMsg);
     }
+  };
+
+  const handleSend = async (e: React.FormEvent) => {
+    e.preventDefault();
+    await sendMessage(input);
   };
 
   const toggleVoiceInput = () => {
@@ -200,7 +209,8 @@ const IslamicChat: React.FC<IslamicChatProps> = ({ user, onLoginClick }) => {
         recognition.onerror = () => setIsListening(false);
         recognition.onresult = (event: any) => {
             const transcript = event.results[0][0].transcript;
-            setInput(prev => (prev.trim() ? `${prev} ${transcript}` : transcript));
+            // Auto-send the message when speech is recognized
+            sendMessage(transcript);
         };
         recognitionRef.current = recognition;
         recognition.start();
@@ -344,7 +354,7 @@ const IslamicChat: React.FC<IslamicChatProps> = ({ user, onLoginClick }) => {
                     <div 
                         className="prose prose-sm prose-emerald dark:prose-invert max-w-none [&>p]:mb-3 last:[&>p]:mb-0 font-arabic"
                         dir="auto"
-                        dangerouslySetInnerHTML={{ __html: parse(msg.content) as string }} 
+                        dangerouslySetInnerHTML={{ __html: marked.parse(msg.content) as string }} 
                     />
                 ) : (
                     <p dir="auto" className="whitespace-pre-wrap font-arabic">{msg.content}</p>

@@ -1,22 +1,23 @@
 import React, { useState, useEffect } from 'react';
-import { Home, Book, MessageCircle, Sparkles, Menu, X, Clock, Image, Video, MapPin, Mic, BookOpen, Search, RotateCcw, Heart, Moon, HelpCircle, ChevronRight, Sun, Info, Youtube, Instagram, User, LogIn, LogOut, Bell, Mail, Lock, Settings, KeyRound, Loader2, CheckCircle, Cpu } from 'lucide-react';
-import PrayerTimes from './components/PrayerTimes';
-import QuranSearch from './components/QuranSearch';
-import HadeesSearch from './components/HadeesSearch';
-import UnifiedSearch from './components/UnifiedSearch';
-import IslamicChat from './components/IslamicChat';
-import DuaGenerator from './components/DuaGenerator';
-import ThumbnailGenerator from './components/ThumbnailGenerator';
-import MediaStudio from './components/MediaStudio';
-import HalalFinder from './components/HalalFinder';
-import LiveScholar from './components/LiveScholar';
-import TasbihCounter from './components/TasbihCounter';
-import NamesOfAllah from './components/NamesOfAllah';
-import DreamInterpreter from './components/DreamInterpreter';
-import IslamicQuiz from './components/IslamicQuiz';
-import { AppView, UserProfile } from './types';
-import { getDailyInspiration } from './services/geminiService';
-import { signInUser, signUpUser, signOutUser, resetUserPassword, updateUserPassword, subscribeToAuthChanges } from './services/userService';
+import { Home, Book, MessageCircle, Sparkles, Menu, X, Clock, Image, Video, MapPin, Mic, BookOpen, Search, RotateCcw, Heart, Moon, HelpCircle, ChevronRight, Sun, Mail, User, LogOut, LogIn, Cpu, Calculator, Youtube, Instagram, Info } from 'lucide-react';
+import PrayerTimes from './PrayerTimes';
+import QuranSearch from './QuranSearch';
+import HadeesSearch from './HadeesSearch';
+import UnifiedSearch from './UnifiedSearch';
+import IslamicChat from './IslamicChat';
+import DuaGenerator from './DuaGenerator';
+import ThumbnailGenerator from './ThumbnailGenerator';
+import MediaStudio from './MediaStudio';
+import HalalFinder from './HalalFinder';
+import LiveScholar from './LiveScholar';
+import TasbihCounter from './TasbihCounter';
+import NamesOfAllah from './NamesOfAllah';
+import DreamInterpreter from './DreamInterpreter';
+import IslamicQuiz from './IslamicQuiz';
+import ZakatCalculator from './ZakatCalculator';
+import { AppView, UserProfile } from '../types';
+import { getDailyInspiration } from '../services/geminiService';
+import { signInUser, signUpUser, signOutUser, resetUserPassword, updateUserPassword, subscribeToAuthChanges } from '../services/userService';
 
 const App: React.FC = () => {
   const [view, setView] = useState<AppView>(AppView.HOME);
@@ -87,6 +88,7 @@ const App: React.FC = () => {
     { id: AppView.NAMES, label: '99 Names', icon: Heart, group: 'Spiritual' },
     { id: AppView.DUA, label: 'Dua Gen', icon: Sparkles, group: 'Spiritual' },
     { id: AppView.DREAM, label: 'Dream Interpret', icon: Moon, group: 'Tools' },
+    { id: AppView.ZAKAT, label: 'Zakat Calc', icon: Calculator, group: 'Tools' },
     { id: AppView.QUIZ, label: 'Quiz', icon: HelpCircle, group: 'Tools' },
     { id: AppView.MEDIA, label: 'Media Studio', icon: Video, group: 'Creative' },
     { id: AppView.THUMBNAIL, label: 'Thumbnails', icon: Image, group: 'Creative' },
@@ -171,6 +173,7 @@ const App: React.FC = () => {
       case AppView.TASBIH: return <TasbihCounter />;
       case AppView.NAMES: return <NamesOfAllah />;
       case AppView.DREAM: return <DreamInterpreter />;
+      case AppView.ZAKAT: return <ZakatCalculator />;
       case AppView.QUIZ: return <IslamicQuiz />;
       case AppView.ABOUT:
         return (
@@ -178,7 +181,7 @@ const App: React.FC = () => {
                 <div className="text-center space-y-6">
                     <div className="w-20 h-20 bg-emerald-600 rounded-3xl flex items-center justify-center text-white mx-auto shadow-2xl"><Sparkles className="w-10 h-10" /></div>
                     <h2 className="text-4xl font-bold text-slate-900 dark:text-white tracking-tight">About ZestIslam</h2>
-                    <p className="text-slate-600 dark:text-slate-300 leading-relaxed text-lg">Your modern Islamic companion bridging tradition and technology, exclusively powered by Gemini 2.5 Flash.</p>
+                    <p className="text-slate-600 dark:text-slate-300 leading-relaxed text-lg">Your modern Islamic companion bridging tradition and technology, exclusively powered by Gemini 3 Flash.</p>
                 </div>
                 <div className="grid md:grid-cols-2 gap-6 text-center">
                     <a href="https://www.youtube.com/@zestislam" target="_blank" rel="noopener noreferrer" className="bg-white dark:bg-slate-900 p-8 rounded-3xl border border-slate-100 dark:border-slate-800 flex flex-col items-center gap-3 hover:shadow-lg transition-shadow font-bold"><Youtube className="w-8 h-8 text-red-600" />YouTube</a>
@@ -258,7 +261,7 @@ const App: React.FC = () => {
             </div>
             <div className="bg-slate-50 dark:bg-slate-800 p-2 rounded-xl flex items-center justify-center gap-2 mb-2">
                 <Cpu className="w-3.5 h-3.5 text-emerald-500" />
-                <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Gemini 2.5 Flash</span>
+                <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Gemini 3 Flash</span>
             </div>
             <div className="grid grid-cols-2 gap-2">
                 <button onClick={() => setDarkMode(!darkMode)} className="flex items-center justify-center p-3 rounded-xl bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-white dark:hover:bg-slate-700 transition-colors">{darkMode ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}</button>

@@ -1,6 +1,5 @@
-
 import React, { useState, useMemo } from 'react';
-import { Loader2, Sparkles, X, ChevronRight, Search, Volume2 } from 'lucide-react';
+import { Loader2, Sparkles, X, Search, Volume2, AlertCircle } from 'lucide-react';
 import { getNameInsight, playGeneratedAudio } from '../services/geminiService';
 import { NameInsight } from '../types';
 
@@ -77,7 +76,7 @@ const ALL_NAMES = [
     { ar: "الْقَادِر", en: "Al-Qadir", tr: "The Capable" },
     { ar: "الْمُقْتَدِر", en: "Al-Muqtadir", tr: "The Powerful" },
     { ar: "الْمُقَدِّم", en: "Al-Muqaddim", tr: "The Expediter" },
-    { ar: "الْمُؤَخِّر", en: "Al-Mu'akhkhir", tr: "The Delayer" },
+    { ar: "الْمُؤِّخِّر", en: "Al-Mu'akhkhir", tr: "The Delayer" },
     { ar: "الْأَوَّل", en: "Al-Awwal", tr: "The First" },
     { ar: "الْآخِر", en: "Al-Akhir", tr: "The Last" },
     { ar: "الظَّاهِر", en: "Az-Zahir", tr: "The Manifest" },
@@ -115,28 +114,36 @@ const NamesOfAllah: React.FC = () => {
     const [loading, setLoading] = useState(false);
     const [search, setSearch] = useState('');
     const [lang, setLang] = useState<Language>('english');
+    const [failed, setFailed] = useState(false);
 
-    const filteredNames = useMemo(() => {
-        return ALL_NAMES.filter(n => 
-            n.en.toLowerCase().includes(search.toLowerCase()) || 
-            n.tr.toLowerCase().includes(search.toLowerCase())
-        );
-    }, [search]);
+    const filteredNames = useMemo(() => ALL_NAMES.filter(n => 
+        n.en.toLowerCase().includes(search.toLowerCase()) || n.tr.toLowerCase().includes(search.toLowerCase())
+    ), [search]);
 
-    const handleSelect = async (name: typeof ALL_NAMES[0]) => {
-        setSelectedName(name);
-        setInsight(null);
+    const fetchInsight = async () => {
+        if (!selectedName) return;
         setLoading(true);
-        const res = await getNameInsight(name.en);
-        setInsight(res);
-        setLoading(false);
+        setFailed(false);
+        try {
+            const res = await getNameInsight(selectedName.en);
+            if (res) {
+                setInsight(res);
+            } else {
+                setFailed(true);
+            }
+        } catch (e) {
+            console.error("ZestIslam: AI Insight fetch failed", e);
+            setFailed(true);
+        } finally {
+            setLoading(false);
+        }
     };
 
-    const handleClose = () => {
-        setSelectedName(null);
+    const handleSelect = (name: typeof ALL_NAMES[0]) => {
+        setSelectedName(name);
         setInsight(null);
-        setLang('english');
-    }
+        setFailed(false);
+    };
 
     const playAudio = async (e: React.MouseEvent, text: string) => {
         e.stopPropagation();
@@ -144,120 +151,130 @@ const NamesOfAllah: React.FC = () => {
     };
 
     return (
-        <div className="max-w-6xl mx-auto space-y-8">
-            <div className="text-center space-y-4">
-                <h2 className="text-3xl font-bold text-slate-800 dark:text-white">Asma-ul-Husna</h2>
-                <p className="text-slate-500 dark:text-slate-400">Explore the 99 Beautiful Names of Allah</p>
-                
-                <div className="max-w-md mx-auto relative">
+        <div className="max-w-6xl mx-auto space-y-8 pb-12">
+            <div className="text-center space-y-4 pt-8">
+                <h2 className="text-3xl md:text-4xl font-bold text-slate-800 dark:text-white">99 Names of Allah</h2>
+                <p className="text-slate-500 dark:text-slate-400">Divine Attributes of the Creator (Asma-ul-Husna)</p>
+                <div className="max-w-md mx-auto relative group">
                     <input 
                         type="text" 
-                        value={search}
-                        onChange={(e) => setSearch(e.target.value)}
-                        placeholder="Search names (e.g., Al-Rahman, Peace...)"
-                        className="w-full px-5 py-3 pl-12 rounded-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 focus:ring-2 focus:ring-emerald-500 outline-none text-slate-700 dark:text-slate-200"
+                        value={search} 
+                        onChange={(e) => setSearch(e.target.value)} 
+                        placeholder="Search by name or meaning..." 
+                        className="w-full px-6 py-4 pl-14 rounded-full bg-white dark:bg-slate-900 border-2 border-slate-100 dark:border-slate-800 focus:border-emerald-500 outline-none transition-all shadow-sm" 
                     />
-                    <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
+                    <Search className="absolute left-5 top-1/2 -translate-y-1/2 w-6 h-6 text-slate-300 group-focus-within:text-emerald-500 transition-colors" />
                 </div>
             </div>
 
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
                 {filteredNames.map((n, i) => (
                     <button 
-                        key={i}
-                        onClick={() => handleSelect(n)}
-                        className="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-sm hover:shadow-lg hover:shadow-emerald-500/10 hover:border-emerald-200 dark:hover:border-emerald-800 transition-all text-center group flex flex-col items-center justify-center min-h-[140px] relative"
+                        key={i} 
+                        onClick={() => handleSelect(n)} 
+                        className="bg-white dark:bg-slate-900 p-6 rounded-3xl border border-slate-100 dark:border-slate-800 shadow-sm hover:shadow-xl hover:border-emerald-100 dark:hover:border-emerald-900/40 transition-all text-center relative group animate-fade-in-up"
+                        style={{ animationDelay: `${i % 12 * 0.05}s` }}
                     >
-                        <div 
-                            onClick={(e) => playAudio(e, n.ar)}
-                            className="absolute top-2 right-2 p-1.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-400 hover:text-emerald-600 dark:hover:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-900/30 transition-colors"
-                            title="Listen"
-                        >
-                            <Volume2 className="w-3.5 h-3.5" />
-                        </div>
-
-                        <p className="font-quran text-4xl text-slate-800 dark:text-white mb-3 group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors">{n.ar}</p>
-                        <p className="text-sm font-bold text-slate-700 dark:text-slate-200 mb-1">{n.en}</p>
-                        <p className="text-[10px] text-slate-400 dark:text-slate-500 uppercase tracking-wide leading-tight">{n.tr}</p>
+                        <Volume2 
+                            onClick={(e) => playAudio(e, n.ar)} 
+                            className="absolute top-3 right-3 w-4 h-4 text-slate-300 hover:text-emerald-600 transition-colors" 
+                        />
+                        <p className="font-quran text-5xl text-slate-800 dark:text-white mb-3 group-hover:scale-110 transition-transform">{n.ar}</p>
+                        <p className="text-sm font-bold text-slate-700 dark:text-slate-200">{n.en}</p>
+                        <p className="text-[10px] text-slate-400 uppercase tracking-widest mt-1 line-clamp-1">{n.tr}</p>
                     </button>
                 ))}
             </div>
 
             {selectedName && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-fade-in">
-                    <div className="bg-white dark:bg-slate-900 rounded-[2rem] max-w-lg w-full overflow-hidden shadow-2xl relative border border-slate-200 dark:border-slate-800 flex flex-col max-h-[90vh]">
+                    <div className="bg-white dark:bg-slate-900 rounded-[2.5rem] max-w-lg w-full overflow-hidden shadow-2xl relative border border-slate-200 dark:border-slate-800 flex flex-col max-h-[90vh]">
                         <button 
-                            onClick={handleClose}
-                            className="absolute top-4 right-4 p-2 bg-white/20 hover:bg-white/40 rounded-full text-white transition-colors z-10"
+                            onClick={() => setSelectedName(null)} 
+                            className="absolute top-4 right-4 p-2 bg-black/5 hover:bg-black/10 dark:bg-white/5 dark:hover:bg-white/10 rounded-full text-slate-500 dark:text-slate-400 transition-colors z-20"
                         >
                             <X className="w-5 h-5" />
                         </button>
                         
-                        <div className="bg-gradient-to-br from-emerald-600 to-teal-800 p-10 text-center text-white relative shrink-0">
-                             <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2 pointer-events-none"></div>
-                            <h3 className="font-quran text-7xl mb-4 drop-shadow-md">{selectedName.ar}</h3>
-                            <button 
-                                onClick={(e) => playAudio(e, selectedName.ar)}
-                                className="absolute bottom-4 right-4 p-2 bg-white/10 hover:bg-white/20 rounded-full text-white/80 hover:text-white transition-colors"
-                                title="Play Pronunciation"
-                            >
-                                <Volume2 className="w-6 h-6" />
-                            </button>
-                            <h4 className="text-3xl font-bold mb-1">{selectedName.en}</h4>
-                            <p className="opacity-90 font-medium text-emerald-100">{selectedName.tr}</p>
+                        <div className="bg-gradient-to-br from-emerald-600 to-teal-800 p-12 text-center text-white shrink-0 relative overflow-hidden">
+                            <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/arabesque.png')] opacity-10"></div>
+                            <h3 className="font-quran text-8xl mb-4 relative z-10">{selectedName.ar}</h3>
+                            <h4 className="text-3xl font-bold relative z-10">{selectedName.en}</h4>
+                            <p className="text-emerald-100 opacity-80 uppercase tracking-[0.2em] text-xs mt-2 relative z-10">{selectedName.tr}</p>
                         </div>
 
-                        <div className="p-8 overflow-y-auto custom-scrollbar">
+                        <div className="p-8 overflow-y-auto custom-scrollbar flex-1 bg-slate-50/50 dark:bg-slate-950/50">
                             {loading ? (
-                                <div className="flex flex-col items-center justify-center py-12 text-emerald-600 dark:text-emerald-400">
-                                    <Loader2 className="w-10 h-10 animate-spin mb-3" />
-                                    <p className="text-sm font-medium">Seeking knowledge...</p>
+                                <div className="flex flex-col items-center py-16 text-emerald-600">
+                                    <Loader2 className="w-12 h-12 animate-spin mb-4" />
+                                    <p className="font-bold uppercase tracking-widest text-xs">Consulting the archives...</p>
+                                </div>
+                            ) : failed ? (
+                                <div className="text-center py-12 animate-fade-in space-y-6">
+                                    <div className="w-16 h-16 bg-red-50 dark:bg-red-900/20 rounded-full flex items-center justify-center mx-auto">
+                                        <AlertCircle className="w-8 h-8 text-red-500" />
+                                    </div>
+                                    <div>
+                                        <p className="text-red-500 font-bold mb-2">Insight unavailable</p>
+                                        <p className="text-slate-500 text-sm max-w-xs mx-auto">We couldn't connect to the AI service. Please try again.</p>
+                                    </div>
+                                    <button 
+                                        onClick={fetchInsight} 
+                                        className="px-10 py-4 bg-emerald-600 hover:bg-emerald-700 text-white rounded-2xl font-bold shadow-lg shadow-emerald-200 dark:shadow-none transition-all active:scale-95"
+                                    >
+                                        Try Again
+                                    </button>
                                 </div>
                             ) : insight ? (
-                                <div className="space-y-6">
-                                    
-                                    {/* Language Switcher */}
-                                    <div className="bg-slate-100 dark:bg-slate-800 p-1 rounded-xl flex">
-                                        {(['english', 'urdu', 'hinglish'] as Language[]).map((l) => (
-                                            <button
-                                                key={l}
-                                                onClick={() => setLang(l)}
-                                                className={`flex-1 py-2 rounded-lg text-xs font-bold uppercase tracking-wider transition-all duration-200 ${
-                                                    lang === l 
-                                                    ? 'bg-white dark:bg-slate-700 text-emerald-600 dark:text-emerald-400 shadow-sm transform scale-[1.02]' 
-                                                    : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-300'
-                                                }`}
+                                <div className="space-y-6 animate-fade-in pb-4">
+                                    <div className="bg-white dark:bg-slate-900 p-1 rounded-2xl flex shadow-sm border border-slate-200 dark:border-slate-800">
+                                        {(['english', 'urdu', 'hinglish'] as Language[]).map(l => (
+                                            <button 
+                                                key={l} 
+                                                onClick={() => setLang(l)} 
+                                                className={`flex-1 py-2.5 rounded-xl text-xs font-bold uppercase transition-all ${lang === l ? 'bg-emerald-600 text-white shadow-md' : 'text-slate-400 hover:text-slate-600'}`}
                                             >
                                                 {l}
                                             </button>
                                         ))}
                                     </div>
-
-                                    <div className={`animate-fade-in-up ${lang === 'urdu' ? 'text-right' : ''}`} dir={lang === 'urdu' ? 'rtl' : 'ltr'}>
-                                        <h5 className={`flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-emerald-600 dark:text-emerald-400 mb-3 ${lang === 'urdu' ? 'flex-row-reverse' : ''}`}>
-                                            <Sparkles className="w-4 h-4" /> 
-                                            {lang === 'urdu' ? 'روحانی عکاسی' : 'Spiritual Reflection'}
-                                        </h5>
-                                        <p className={`text-slate-700 dark:text-slate-300 leading-loose ${lang === 'urdu' ? 'font-quran text-xl' : 'text-base'}`}>
-                                            {insight[lang].reflection}
+                                    <div className={`${lang === 'urdu' ? 'text-right' : ''}`} dir={lang === 'urdu' ? 'rtl' : 'ltr'}>
+                                        <p className={`text-xl font-bold text-slate-800 dark:text-slate-100 mb-4 ${lang === 'urdu' ? 'font-quran text-2xl' : ''}`}>
+                                            {insight[lang]?.meaning || 'Meaning not available.'}
                                         </p>
-                                    </div>
-                                    <div className={`bg-emerald-50 dark:bg-emerald-900/20 p-6 rounded-2xl border border-emerald-100 dark:border-emerald-800 animate-fade-in-up delay-100 ${lang === 'urdu' ? 'text-right' : ''}`} dir={lang === 'urdu' ? 'rtl' : 'ltr'}>
-                                        <h5 className={`flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-emerald-700 dark:text-emerald-300 mb-3 ${lang === 'urdu' ? 'flex-row-reverse' : ''}`}>
-                                            <ChevronRight className="w-4 h-4" /> 
-                                            {lang === 'urdu' ? 'عملی اطلاق' : 'Application in Life'}
-                                        </h5>
-                                        <p className={`text-slate-600 dark:text-slate-400 text-sm italic leading-relaxed ${lang === 'urdu' ? 'font-quran text-lg not-italic' : ''}`}>
-                                            "{insight[lang].application}"
+                                        <p className={`text-slate-600 dark:text-slate-400 leading-relaxed mb-6 ${lang === 'urdu' ? 'font-quran text-xl leading-loose' : ''}`}>
+                                            {insight[lang]?.reflection || 'Reflection not available.'}
                                         </p>
+                                        <div className="bg-emerald-50 dark:bg-emerald-900/20 p-6 rounded-[2rem] border border-emerald-100 dark:border-emerald-800/50">
+                                            <h5 className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-[0.2em] mb-3">Living this Attribute</h5>
+                                            <p className={`text-slate-700 dark:text-slate-300 font-medium ${lang === 'urdu' ? 'font-quran text-xl' : 'text-sm'}`}>
+                                                {insight[lang]?.application || 'Practical application not available.'}
+                                            </p>
+                                        </div>
                                     </div>
                                 </div>
                             ) : (
-                                <div className="text-center py-8">
-                                    <p className="text-red-500 text-sm mb-4">Failed to load insight.</p>
-                                    <button onClick={() => handleSelect(selectedName)} className="text-emerald-600 underline text-sm">Try Again</button>
+                                <div className="text-center py-12">
+                                    <Sparkles className="w-12 h-12 text-emerald-200 mx-auto mb-6" />
+                                    <p className="text-slate-500 mb-8 text-sm">Unlock deep spiritual insights and practical applications of this Name.</p>
+                                    <button 
+                                        onClick={fetchInsight} 
+                                        className="px-10 py-4 bg-emerald-600 hover:bg-emerald-700 text-white rounded-2xl font-bold shadow-lg shadow-emerald-200 dark:shadow-none transition-all hover:scale-105 active:scale-95"
+                                    >
+                                        Reveal Insight
+                                    </button>
                                 </div>
                             )}
+                        </div>
+
+                        {/* Footer Close Button */}
+                        <div className="p-6 border-t border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900 shrink-0">
+                            <button 
+                                onClick={() => setSelectedName(null)}
+                                className="w-full py-4 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 rounded-2xl font-bold hover:bg-slate-200 dark:hover:bg-slate-700 transition-all flex items-center justify-center gap-2"
+                            >
+                                <X className="w-4 h-4" /> Close Details
+                            </button>
                         </div>
                     </div>
                 </div>

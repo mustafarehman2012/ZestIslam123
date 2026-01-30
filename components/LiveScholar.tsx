@@ -1,6 +1,5 @@
-
 import React, { useState, useEffect, useRef } from 'react';
-import { Mic, MicOff, Activity, XCircle, Volume2, Volume1, VolumeX, Gauge, Signal, PauseCircle, Clock } from 'lucide-react';
+import { Mic, MicOff, Activity, XCircle, Volume2, VolumeX, Gauge, PauseCircle } from 'lucide-react';
 import { GoogleGenAI, LiveServerMessage, Modality } from '@google/genai';
 
 const LiveScholar: React.FC = () => {
@@ -8,13 +7,11 @@ const LiveScholar: React.FC = () => {
     const [error, setError] = useState<string | null>(null);
     const [status, setStatus] = useState("Ready to connect");
     
-    // Audio Controls
     const [volume, setVolume] = useState(1.0);
     const [playbackSpeed, setPlaybackSpeed] = useState(1.0);
     const [micMuted, setMicMuted] = useState(false);
     const [duration, setDuration] = useState(0);
 
-    // Refs for audio handling
     const audioContextRef = useRef<AudioContext | null>(null);
     const inputAudioContextRef = useRef<AudioContext | null>(null);
     const processorRef = useRef<ScriptProcessorNode | null>(null);
@@ -25,14 +22,12 @@ const LiveScholar: React.FC = () => {
     const nextStartTimeRef = useRef<number>(0);
     const sourcesRef = useRef<Set<AudioBufferSourceNode>>(new Set());
 
-    // Cleanup on unmount
     useEffect(() => {
         return () => {
             stopSession();
         };
     }, []);
 
-    // Timer Logic
     useEffect(() => {
         if (connected) {
             intervalRef.current = setInterval(() => {
@@ -53,14 +48,12 @@ const LiveScholar: React.FC = () => {
         return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
     };
 
-    // Update volume in real-time
     useEffect(() => {
         if (gainNodeRef.current) {
             gainNodeRef.current.gain.value = volume;
         }
     }, [volume]);
 
-    // Handle Mic Mute
     useEffect(() => {
         if (streamRef.current) {
             const audioTracks = streamRef.current.getAudioTracks();
@@ -112,7 +105,16 @@ const LiveScholar: React.FC = () => {
             setError(null);
             setStatus("Connecting...");
             
-            const ai = new GoogleGenAI({ apiKey: process.env.API_KEY || '' });
+            // Use process.env.API_KEY directly
+            const apiKey = process.env.API_KEY;
+
+            if (!apiKey) {
+                setError("API Key is missing. Please ensure your environment is configured.");
+                setStatus("Config Error");
+                return;
+            }
+
+            const ai = new GoogleGenAI({ apiKey });
             
             const inputAudioContext = new (window.AudioContext || (window as any).webkitAudioContext)({sampleRate: 16000});
             inputAudioContextRef.current = inputAudioContext;
@@ -129,7 +131,7 @@ const LiveScholar: React.FC = () => {
             streamRef.current = stream;
 
             const sessionPromise = ai.live.connect({
-                model: 'gemini-2.5-flash-native-audio-preview-09-2025',
+                model: 'gemini-2.5-flash-native-audio-preview-12-2025',
                 callbacks: {
                     onopen: () => {
                         setConnected(true);
@@ -148,7 +150,7 @@ const LiveScholar: React.FC = () => {
                                     session.sendRealtimeInput({ media: pcmBlob });
                                 }
                             }).catch(err => {
-                                console.error("Session send error", err);
+                                console.error("ZestIslam: Session send error", err);
                                 stopSession();
                             });
                         };
@@ -171,25 +173,29 @@ const LiveScholar: React.FC = () => {
                                 source.start(nextStartTimeRef.current);
                                 nextStartTimeRef.current += (audioBuffer.duration / playbackSpeed);
                                 sourcesRef.current.add(source);
-                            } catch (e) { console.error("Audio decoding error", e); }
+                            } catch (e) { console.error("ZestIslam: Audio decoding error", e); }
                         }
                     },
                     onclose: () => stopSession(),
-                    onerror: (e) => { console.error("Session error", e); setError("Connection interrupted."); stopSession(); }
+                    onerror: (e) => { 
+                        console.error("ZestIslam: Live Session error", e); 
+                        setError("Connection lost. Please try again."); 
+                        stopSession(); 
+                    }
                 },
                 config: {
                     responseModalities: [Modality.AUDIO],
                     speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: 'Puck' } } },
                     systemInstruction: `You are the ZestIslam Scholar, a friendly and wise Islamic assistant created by ZestIslam.
-                    - **IDENTITY**: You must always identify yourself as "The ZestIslam Scholar". If asked about your creation, say "I was created by ZestIslam and powered by Google Gemini."
-                    - **LANGUAGE**: Speak **English** by default. Do NOT speak other languages unless explicitly asked by the user (e.g., "Speak Urdu").
-                    - **TONE**: Calm, scholarly, and compassionate.
-                    - **CONTENT**: Base your answers on the Quran and authentic Hadith.`
+                    - **IDENTITY**: Always identify yourself as "The ZestIslam Scholar".
+                    - **ROLE**: Provide guidance on Quran, Hadith, and Islamic practices.
+                    - **LANGUAGE**: Speak English by default.
+                    - **TONE**: Academic yet compassionate.`
                 }
             });
         } catch (e) {
             console.error(e);
-            setError("Failed to start session. Please check permissions.");
+            setError("Microphone access denied or connection failed.");
             stopSession();
         }
     };
@@ -228,14 +234,11 @@ const LiveScholar: React.FC = () => {
     }
 
     return (
-        <div className="flex flex-col items-center justify-center min-h-[600px] bg-slate-950 rounded-[3rem] text-white relative overflow-hidden shadow-2xl border border-slate-800">
-            {/* Background Effects */}
+        <div className="flex flex-col items-center justify-center min-h-[600px] bg-slate-950 rounded-[3rem] text-white relative overflow-hidden shadow-2xl border border-slate-800 animate-fade-in">
             <div className="absolute inset-0 opacity-10 bg-[url('https://www.transparenttextures.com/patterns/arabesque.png')]"></div>
             <div className="absolute bottom-0 left-0 w-full h-1/2 bg-gradient-to-t from-emerald-900/20 to-transparent pointer-events-none"></div>
             
             <div className="z-10 text-center w-full max-w-lg px-6 flex flex-col items-center h-full py-12">
-                
-                {/* Header Info */}
                 <div className="mb-12 space-y-2">
                     <div className="flex items-center gap-3 justify-center">
                         <span className={`w-2.5 h-2.5 rounded-full transition-colors duration-500 ${connected ? 'bg-emerald-400 shadow-[0_0_15px_rgba(52,211,153,0.8)]' : 'bg-slate-600'}`}></span>
@@ -251,13 +254,10 @@ const LiveScholar: React.FC = () => {
                     </div>
                 </div>
 
-                {/* Modern Visualizer */}
                 <div className="relative mb-16 group cursor-pointer" onClick={connected ? () => setMicMuted(!micMuted) : startSession}>
-                    {/* Ripple Effects */}
                     <div className={`absolute inset-0 rounded-full border border-emerald-500/20 scale-150 transition-all duration-1000 ${connected && !micMuted ? 'animate-ping opacity-50' : 'opacity-0'}`}></div>
                     <div className={`absolute inset-0 rounded-full border-2 border-emerald-500/30 scale-110 transition-all duration-1000 ${connected && !micMuted ? 'animate-pulse' : 'opacity-0'}`}></div>
                     
-                    {/* Core Button Area */}
                     <div className={`relative w-48 h-48 rounded-full flex items-center justify-center transition-all duration-500 shadow-2xl ${
                         connected 
                             ? (micMuted 
@@ -273,12 +273,10 @@ const LiveScholar: React.FC = () => {
                     </div>
                 </div>
 
-                {/* Controls Deck */}
                 {connected && (
                     <div className="w-full bg-slate-900/80 backdrop-blur-md p-6 rounded-[2rem] border border-slate-800 space-y-6 animate-fade-in-up shadow-2xl relative overflow-hidden">
                         <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-emerald-500 to-teal-500 opacity-50"></div>
                         
-                        {/* Primary Actions */}
                         <div className="flex items-center justify-center gap-6">
                              <button 
                                 onClick={() => setMicMuted(!micMuted)}
@@ -304,9 +302,7 @@ const LiveScholar: React.FC = () => {
                              </button>
                         </div>
 
-                        {/* Sliders Row */}
                         <div className="flex items-center gap-4 px-2">
-                             {/* Volume */}
                             <div className="flex items-center gap-3 flex-1 bg-slate-950 p-3 rounded-xl border border-slate-800">
                                 <button onClick={() => setVolume(v => v === 0 ? 1 : 0)} className="text-emerald-500">
                                     {volume === 0 ? <VolumeX className="w-4 h-4" /> : <Volume2 className="w-4 h-4" />}
@@ -318,7 +314,6 @@ const LiveScholar: React.FC = () => {
                                 />
                             </div>
                             
-                            {/* Speed */}
                             <div className="flex items-center gap-2 bg-slate-950 p-2 rounded-xl border border-slate-800">
                                 <Gauge className="w-4 h-4 text-emerald-500 ml-1" />
                                 <select 
@@ -333,13 +328,12 @@ const LiveScholar: React.FC = () => {
                     </div>
                 )}
 
-                {/* Start Button */}
                 {!connected && (
                     <button 
                         onClick={startSession} 
                         className="relative px-8 py-4 bg-emerald-600 text-white rounded-full font-bold text-lg hover:bg-emerald-500 hover:scale-105 transition-all shadow-lg shadow-emerald-900/50 flex items-center gap-2"
                     >
-                        <Mic className="w-5 h-5" /> Tap to Speak
+                        <Mic className="w-5 h-5" /> Start Consultation
                     </button>
                 )}
 
