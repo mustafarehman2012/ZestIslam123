@@ -9,7 +9,7 @@ IDENTITY & CORE RULES:
 3. **Tone**: Polite, respectful, clear, and wise (Hikmah).
 4. **Formatting**: Use Markdown for clear presentation.`;
 
-// Standardizing on Gemini 3 Flash for all text-based tasks
+// Standardizing on Gemini 3 Flash for high performance and reliability
 const DEFAULT_TEXT_MODEL = 'gemini-3-flash-preview';
 
 const wait = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
@@ -25,7 +25,7 @@ const getAI = () => {
 
 /**
  * Enhanced retry logic to handle transient 503 (Model Overloaded) and 429 (Rate Limit) errors.
- * Uses aggressive exponential backoff to handle high-traffic periods gracefully.
+ * Uses exponential backoff (2s, 4s, 8s...) to handle high-traffic periods.
  */
 async function retryOperation<T>(operation: () => Promise<T>, retries = 5, delay = 2000, fallbackValue?: T): Promise<T> {
     try {
@@ -36,12 +36,14 @@ async function retryOperation<T>(operation: () => Promise<T>, retries = 5, delay
                             errorMessage.includes("overloaded") || 
                             errorMessage.includes("429") ||
                             errorMessage.includes("rate limit") ||
-                            errorMessage.includes("UNAVAILABLE");
+                            errorMessage.includes("UNAVAILABLE") ||
+                            errorMessage.includes("Unauthenticated");
 
-        console.error(`ZestIslam API Error (Retries left: ${retries}):`, errorMessage);
+        console.error(`ZestIslam API Connection (Retries left: ${retries}):`, errorMessage);
         
         if (retries > 0 && isTransient) {
             await wait(delay);
+            // Exponential backoff: increase delay for next attempt
             return retryOperation(operation, retries - 1, delay * 2, fallbackValue);
         }
         
@@ -51,7 +53,7 @@ async function retryOperation<T>(operation: () => Promise<T>, retries = 5, delay
 }
 
 /**
- * Safely parse JSON from model responses.
+ * Safely parse JSON from model responses to prevent app crashes.
  */
 const safeParseJson = (text: string | undefined, fallback: any) => {
     if (!text) return fallback;
@@ -77,7 +79,7 @@ export const getScholarChatResponse = async (history: {role: string, content: st
     });
     const result = await chat.sendMessage({ message });
     return result.text || "I apologize, I could not generate a response at this time.";
-  }, 5, 2000, "The ZestIslam Scholar is currently experiencing high demand. Please try again shortly.");
+  }, 5, 2000, "The ZestIslam Scholar is currently attending to many seekers of knowledge. Please try your request again in a moment.");
 };
 
 export const generateChatTitle = async (firstMessage: string): Promise<string> => {
@@ -85,10 +87,10 @@ export const generateChatTitle = async (firstMessage: string): Promise<string> =
         const ai = getAI();
         const response = await ai.models.generateContent({
             model: DEFAULT_TEXT_MODEL,
-            contents: `Generate a 3-word title for: "${firstMessage}". Return ONLY text.`,
+            contents: `Generate a 3-word title for an Islamic discussion starting with: "${firstMessage}". Return ONLY the text of the title.`,
         });
         return response.text?.trim() || "New Conversation";
-    }, 2, 500, "New Conversation");
+    }, 2, 1000, "New Conversation");
 }
 
 export const searchQuranByType = async (query: string): Promise<QuranVerse[]> => {
@@ -96,7 +98,7 @@ export const searchQuranByType = async (query: string): Promise<QuranVerse[]> =>
         const ai = getAI();
         const response = await ai.models.generateContent({
             model: DEFAULT_TEXT_MODEL,
-            contents: `Find 5 relevant Quranic verses for topic: "${query}". Return JSON.`,
+            contents: `Find 5 relevant Quranic verses for the following topic or emotion: "${query}". Return the result as a JSON array of objects with surahName, verseNumber, arabicText, translation, and explanation.`,
             config: {
                 responseMimeType: "application/json",
                 responseSchema: {
@@ -124,7 +126,7 @@ export const searchHadithByType = async (query: string): Promise<Hadith[]> => {
         const ai = getAI();
         const response = await ai.models.generateContent({
             model: DEFAULT_TEXT_MODEL,
-            contents: `Find 5 authentic Hadiths for topic: "${query}". Return JSON.`,
+            contents: `Find 5 authentic Hadiths for the following topic: "${query}". Return JSON array with book, hadithNumber, chapter, arabicText, translation, explanation, and grade.`,
             config: {
                 responseMimeType: "application/json",
                 responseSchema: {
@@ -160,7 +162,7 @@ export const getDailyInspiration = async (): Promise<{ type: 'Ayah' | 'Hadith', 
         const ai = getAI();
         const response = await ai.models.generateContent({
             model: DEFAULT_TEXT_MODEL,
-            contents: `Inspirational short Ayah or Hadith for ${today}. JSON with type, text, source.`,
+            contents: `Provide one inspirational and short Ayah or Hadith for today (${today}). Return JSON with fields: type, text, source.`,
             config: { responseMimeType: "application/json" }
         });
         return safeParseJson(response.text, null);
@@ -174,7 +176,7 @@ export const getNameInsight = async (name: string): Promise<NameInsight | null> 
         const ai = getAI();
         const response = await ai.models.generateContent({
             model: DEFAULT_TEXT_MODEL,
-            contents: `Insight for Name of Allah: "${name}". JSON with english, urdu, and hinglish versions. Each with meaning, reflection, and application.`,
+            contents: `Provide deep spiritual insight for the Name of Allah: "${name}". Return JSON with english, urdu, and hinglish versions. Each language should have meaning, reflection, and application properties.`,
             config: { 
                 responseMimeType: "application/json",
                 responseSchema: {
@@ -198,7 +200,7 @@ export const interpretDream = async (dream: string): Promise<DreamResult | null>
         const ai = getAI();
         const response = await ai.models.generateContent({
             model: DEFAULT_TEXT_MODEL, 
-            contents: `Interpret dream: "${dream}". JSON with english, urdu, hinglish keys. Each with interpretation, symbols (array), and advice.`,
+            contents: `Interpret the following dream from an Islamic perspective: "${dream}". Return JSON with english, urdu, and hinglish keys. Each key should contain interpretation, symbols (array), and advice properties.`,
             config: { 
                 responseMimeType: "application/json",
                 responseSchema: {
@@ -221,7 +223,7 @@ export const generatePersonalizedDua = async (situation: string): Promise<Genera
         const ai = getAI();
         const response = await ai.models.generateContent({
         model: DEFAULT_TEXT_MODEL,
-        contents: `Beautiful Dua for: "${situation}". Return JSON with title, arabic, transliteration, translation.`,
+        contents: `Create a beautiful, personalized Dua for someone in this situation: "${situation}". Return JSON with title, arabic, transliteration, translation.`,
         config: { 
             responseMimeType: "application/json",
             responseSchema: {
@@ -245,7 +247,7 @@ export const getDhikrSuggestion = async (feeling: string): Promise<DhikrSuggesti
         const ai = getAI();
         const response = await ai.models.generateContent({
             model: DEFAULT_TEXT_MODEL,
-            contents: `Suggest Dhikr for feeling: "${feeling}". JSON with arabic, transliteration, meaning, benefit, target (int).`,
+            contents: `Suggest a specific Dhikr for someone feeling: "${feeling}". Return JSON with arabic, transliteration, meaning, benefit, and target (integer count).`,
             config: { responseMimeType: "application/json" }
         });
         return safeParseJson(response.text, null);
@@ -257,7 +259,7 @@ export const generateQuiz = async (topic: string, difficulty: string, count: num
         const ai = getAI();
         const response = await ai.models.generateContent({
             model: DEFAULT_TEXT_MODEL,
-            contents: `Generate ${count} ${difficulty} MCQs about ${topic}. JSON array of objects.`,
+            contents: `Generate ${count} ${difficulty} multiple choice questions about ${topic} from an Islamic perspective. Return as a JSON array of objects.`,
             config: { responseMimeType: "application/json" }
         });
         return safeParseJson(response.text, []);
@@ -352,7 +354,7 @@ export const generateTadabbur = async (surah: string, verseNumber: number): Prom
         const ai = getAI();
         const response = await ai.models.generateContent({
         model: DEFAULT_TEXT_MODEL,
-        contents: `Spiritual Tadabbur for verse ${surah}:${verseNumber}. JSON with english, urdu, hinglish keys. Each with paragraph and points (array).`,
+        contents: `Provide deep spiritual Tadabbur (reflection) for the Quranic verse ${surah}:${verseNumber}. Return JSON with english, urdu, and hinglish keys. Each key should have a paragraph and a points (array) property.`,
         config: { 
             responseMimeType: "application/json"
         }
@@ -366,7 +368,7 @@ export const generateSharh = async (book: string, hadithNumber: string): Promise
         const ai = getAI();
         const response = await ai.models.generateContent({
         model: DEFAULT_TEXT_MODEL,
-        contents: `Spiritual Sharh for ${book} Hadith ${hadithNumber}. JSON with english, urdu, hinglish keys. Each with paragraph and points (array).`,
+        contents: `Provide spiritual Sharh (explanation) for ${book} Hadith ${hadithNumber}. Return JSON with english, urdu, and hinglish keys. Each key should have a paragraph and a points (array) property.`,
         config: { 
             responseMimeType: "application/json"
         }
@@ -380,7 +382,7 @@ export const findIslamicPlaces = async (query: string, lat: number, lng: number,
         const ai = getAI();
         const response = await ai.models.generateContent({
             model: DEFAULT_TEXT_MODEL,
-            contents: `Find real ${query} near ${locationName || 'the user'}. Lat ${lat}, Lng ${lng}. Use Google Maps.`,
+            contents: `Find real ${query} near ${locationName || 'the current user location'}. Coordinates: Lat ${lat}, Lng ${lng}. Use Google Maps and return the grounded results.`,
             config: {
                 tools: [{ googleMaps: {} }],
                 toolConfig: { retrievalConfig: { latLng: { latitude: lat, longitude: lng } } }
@@ -395,7 +397,7 @@ export const searchIslamicWeb = async (query: string): Promise<{text: string, ch
         const ai = getAI();
         const response = await ai.models.generateContent({
             model: DEFAULT_TEXT_MODEL,
-            contents: `Detailed Islamic research on: "${query}". Use Web Search.`,
+            contents: `Perform detailed Islamic research on: "${query}". Provide a comprehensive summary using web search.`,
             config: { 
                 tools: [{ googleSearch: {} }]
             }
@@ -413,7 +415,7 @@ export const generateThumbnail = async (prompt: string, aspectRatio: string = "1
         const model = usePro ? 'gemini-3-pro-image-preview' : 'gemini-2.5-flash-image';
         const response = await ai.models.generateContent({
             model: model,
-            contents: { parts: [{ text: `Islamic aesthetic digital art: ${prompt}. Cinematic lighting, intricate patterns.` }] },
+            contents: { parts: [{ text: `A highly aesthetic Islamic digital art piece: ${prompt}. Elegant lighting, intricate geometric patterns, spiritual atmosphere.` }] },
             config: {
                 imageConfig: {
                     aspectRatio: aspectRatio as any,
@@ -433,7 +435,7 @@ export const generateVeoVideo = async (prompt: string, imageB64?: string, aspect
         const ai = getAI();
         let operation = await ai.models.generateVideos({
             model: 'veo-3.1-fast-generate-preview',
-            prompt: `Islamic cinematic visualization: ${prompt}`,
+            prompt: `Cinematic Islamic visualization: ${prompt}`,
             image: imageB64 ? { imageBytes: imageB64, mimeType: 'image/png' } : undefined,
             config: {
                 numberOfVideos: 1,
@@ -459,7 +461,7 @@ export const editIslamicImage = async (base64ImageData: string, prompt: string):
             contents: {
                 parts: [
                     { inlineData: { data: base64ImageData, mimeType: 'image/png' } }, 
-                    { text: `Edit image: ${prompt}. Maintain Islamic aesthetic.` }
+                    { text: `Modify this image according to: ${prompt}. Keep the aesthetic spiritual and appropriate.` }
                 ]
             }
         });
@@ -477,10 +479,10 @@ export const analyzeMedia = async (base64Data: string, mimeType: string, prompt:
             model: DEFAULT_TEXT_MODEL,
             contents: { parts: [
                 { inlineData: { data: base64Data, mimeType: mimeType } }, 
-                { text: `Analyze media from Islamic perspective: ${prompt}` }
+                { text: `Analyze this media from an Islamic scholarly perspective: ${prompt}` }
             ] }
         });
-        return response.text || "Unable to analyze media content.";
+        return response.text || "Unable to analyze media content at this moment.";
     });
 };
 
@@ -492,7 +494,7 @@ export const transcribeMedia = async (base64Data: string, mimeType: string): Pro
             contents: {
                 parts: [
                     { inlineData: { data: base64Data, mimeType: mimeType } }, 
-                    { text: "Detailed transcription, especially Arabic terminology." }
+                    { text: "Provide a detailed transcription, paying close attention to any Arabic or religious terminology." }
                 ]
             }
         });
