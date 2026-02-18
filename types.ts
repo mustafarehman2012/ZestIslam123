@@ -1,3 +1,5 @@
+
+
 export interface Message {
   id: string;
   role: 'user' | 'model';
@@ -41,26 +43,18 @@ export interface Hadith {
   grade: string;
 }
 
-export interface HadithBook {
-    id: string;
-    name: string;
-    arabicName: string;
-    description: string;
-    totalHadiths: number;
-    editionId: string;
+export interface UserProfile {
+  name: string;
+  email: string;
+  joinedDate: Date;
 }
 
+// Added GeneratedDua interface to resolve export errors in service and components
 export interface GeneratedDua {
   title: string;
   arabic: string;
   transliteration: string;
   translation: string;
-}
-
-export interface UserProfile {
-  name: string;
-  email: string;
-  joinedDate: Date;
 }
 
 export enum AppView {
@@ -71,15 +65,15 @@ export enum AppView {
   CHAT = 'CHAT',
   DUA = 'DUA',
   PRAYER = 'PRAYER',
-  THUMBNAIL = 'THUMBNAIL',
-  MEDIA = 'MEDIA',
   FINDER = 'FINDER',
   LIVE = 'LIVE',
   TASBIH = 'TASBIH',
   NAMES = 'NAMES',
   DREAM = 'DREAM',
   QUIZ = 'QUIZ',
-  ZAKAT = 'ZAKAT',
+  MEDIA = 'MEDIA',
+  THUMBNAIL = 'THUMBNAIL',
+  RAMADAN = 'RAMADAN',
   ABOUT = 'ABOUT',
   CONTACT = 'CONTACT',
   LOGIN = 'LOGIN',
@@ -91,23 +85,18 @@ export interface GeoLocation {
   longitude: number;
 }
 
-export interface TadabburContent {
-  paragraph: string;
-  points: string[];
-}
-
 export interface TadabburResult {
   verseReference: string;
-  english: TadabburContent;
-  urdu: TadabburContent;
-  hinglish: TadabburContent;
+  english: { paragraph: string; points: string[] };
+  urdu: { paragraph: string; points: string[] };
+  hinglish: { paragraph: string; points: string[] };
 }
 
 export interface SharhResult {
   hadithReference: string;
-  english: TadabburContent;
-  urdu: TadabburContent;
-  hinglish: TadabburContent;
+  english: { paragraph: string; points: string[] };
+  urdu: { paragraph: string; points: string[] };
+  hinglish: { paragraph: string; points: string[] };
 }
 
 export interface DhikrSuggestion {
@@ -152,4 +141,13 @@ export interface FullSurahVerse {
     text: string;
     translation: string;
     numberInSurah: number;
+}
+
+// Ramadan Specific
+export interface RamadanDailyContent {
+  day: number;
+  reflection: string;
+  hadith: string;
+  mission: string;
+  journalPrompt: string;
 }

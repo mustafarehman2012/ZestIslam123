@@ -1,503 +1,283 @@
-import { GoogleGenAI, Type, Modality } from "@google/genai";
-import { GeneratedDua, QuranVerse, TadabburResult, Hadith, SharhResult, DhikrSuggestion, NameInsight, DreamResult, QuizQuestion, SurahMeta, FullSurahVerse } from "../types";
+import { GoogleGenAI, Type } from "@google/genai";
+import { GeneratedDua, QuranVerse, TadabburResult, Hadith, SharhResult, DhikrSuggestion, NameInsight, DreamResult, QuizQuestion, SurahMeta, FullSurahVerse, RamadanDailyContent } from "../types";
 
-const SCHOLAR_INSTRUCTION = `You are the ZestIslam Scholar, a knowledgeable and compassionate Islamic assistant created by ZestIslam.
+const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+const TEXT_MODEL = 'gemini-3-flash-preview';
+const MAPS_MODEL = 'gemini-2.5-flash';
 
-IDENTITY & CORE RULES:
-1. **Identity**: You must explicitly identify yourself as "The ZestIslam Scholar".
-2. **Knowledge Source**: Base answers on the Quran and authentic Sunnah.
-3. **Tone**: Polite, respectful, clear, and wise (Hikmah).
-4. **Formatting**: Use Markdown for clear presentation.`;
-
-// Standardizing on Gemini 3 Flash for high performance and reliability
-const DEFAULT_TEXT_MODEL = 'gemini-3-flash-preview';
-
-const wait = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
-
-/**
- * Standard factory for GoogleGenAI instances to ensure process.env.API_KEY is used.
- */
-const getAI = () => {
-    const key = process.env.API_KEY;
-    if (!key) throw new Error("ZestIslam: Environment API_KEY is missing.");
-    return new GoogleGenAI({ apiKey: key });
-};
-
-/**
- * Enhanced retry logic to handle transient 503 (Model Overloaded) and 429 (Rate Limit) errors.
- * Uses exponential backoff (2s, 4s, 8s...) to handle high-traffic periods.
- */
-async function retryOperation<T>(operation: () => Promise<T>, retries = 5, delay = 2000, fallbackValue?: T): Promise<T> {
-    try {
-        return await operation();
-    } catch (error: any) {
-        const errorMessage = error?.message || (typeof error === 'string' ? error : JSON.stringify(error));
-        const isTransient = errorMessage.includes("503") || 
-                            errorMessage.includes("overloaded") || 
-                            errorMessage.includes("429") ||
-                            errorMessage.includes("rate limit") ||
-                            errorMessage.includes("UNAVAILABLE") ||
-                            errorMessage.includes("Unauthenticated");
-
-        console.error(`ZestIslam API Connection (Retries left: ${retries}):`, errorMessage);
-        
-        if (retries > 0 && isTransient) {
-            await wait(delay);
-            // Exponential backoff: increase delay for next attempt
-            return retryOperation(operation, retries - 1, delay * 2, fallbackValue);
-        }
-        
-        if (fallbackValue !== undefined) return fallbackValue;
-        throw error;
-    }
-}
-
-/**
- * Safely parse JSON from model responses to prevent app crashes.
- */
 const safeParseJson = (text: string | undefined, fallback: any) => {
     if (!text) return fallback;
     try {
         const cleanText = text.replace(/```json|```/g, '').trim();
         return JSON.parse(cleanText);
-    } catch (e) {
-        console.error("ZestIslam: JSON Parse Error", e);
-        return fallback;
+    } catch (e) { 
+        console.error("Gemini JSON Parse Error:", e, "Raw text:", text);
+        return fallback; 
     }
 };
 
-export const getScholarChatResponse = async (history: {role: string, content: string}[], message: string): Promise<string> => {
-  return await retryOperation(async () => {
-    const ai = getAI();
-    const chat = ai.chats.create({
-      model: DEFAULT_TEXT_MODEL,
-      config: { 
-        systemInstruction: SCHOLAR_INSTRUCTION, 
-        temperature: 0.7
-      },
-      history: history.map(h => ({ role: h.role, parts: [{ text: h.content }] })),
-    });
-    const result = await chat.sendMessage({ message });
-    return result.text || "I apologize, I could not generate a response at this time.";
-  }, 5, 2000, "The ZestIslam Scholar is currently attending to many seekers of knowledge. Please try your request again in a moment.");
-};
+// --- SCHOLAR / ASSISTANT SECTION ---
 
-export const generateChatTitle = async (firstMessage: string): Promise<string> => {
-    return await retryOperation(async () => {
-        const ai = getAI();
-        const response = await ai.models.generateContent({
-            model: DEFAULT_TEXT_MODEL,
-            contents: `Generate a 3-word title for an Islamic discussion starting with: "${firstMessage}". Return ONLY the text of the title.`,
-        });
-        return response.text?.trim() || "New Conversation";
-    }, 2, 1000, "New Conversation");
-}
-
-export const searchQuranByType = async (query: string): Promise<QuranVerse[]> => {
-    return await retryOperation(async () => {
-        const ai = getAI();
-        const response = await ai.models.generateContent({
-            model: DEFAULT_TEXT_MODEL,
-            contents: `Find 5 relevant Quranic verses for the following topic or emotion: "${query}". Return the result as a JSON array of objects with surahName, verseNumber, arabicText, translation, and explanation.`,
-            config: {
-                responseMimeType: "application/json",
-                responseSchema: {
-                    type: Type.ARRAY,
-                    items: {
-                        type: Type.OBJECT,
-                        properties: {
-                            surahName: { type: Type.STRING },
-                            verseNumber: { type: Type.INTEGER },
-                            arabicText: { type: Type.STRING },
-                            translation: { type: Type.STRING },
-                            explanation: { type: Type.STRING }
-                        },
-                        required: ["surahName", "verseNumber", "arabicText", "translation", "explanation"]
-                    }
-                }
-            }
-        });
-        return safeParseJson(response.text, []);
-    }); 
-};
-
-export const searchHadithByType = async (query: string): Promise<Hadith[]> => {
-    return await retryOperation(async () => {
-        const ai = getAI();
-        const response = await ai.models.generateContent({
-            model: DEFAULT_TEXT_MODEL,
-            contents: `Find 5 authentic Hadiths for the following topic: "${query}". Return JSON array with book, hadithNumber, chapter, arabicText, translation, explanation, and grade.`,
-            config: {
-                responseMimeType: "application/json",
-                responseSchema: {
-                    type: Type.ARRAY,
-                    items: {
-                        type: Type.OBJECT,
-                        properties: {
-                            book: { type: Type.STRING },
-                            hadithNumber: { type: Type.STRING },
-                            chapter: { type: Type.STRING },
-                            arabicText: { type: Type.STRING },
-                            translation: { type: Type.STRING },
-                            explanation: { type: Type.STRING },
-                            grade: { type: Type.STRING }
-                        },
-                        required: ["book", "hadithNumber", "chapter", "arabicText", "translation", "explanation", "grade"]
-                    }
-                }
-            }
-        });
-        return safeParseJson(response.text, []);
-    }); 
-};
-
-export const getDailyInspiration = async (): Promise<{ type: 'Ayah' | 'Hadith', text: string, source: string } | null> => {
-    const today = new Date().toDateString();
-    const CACHE_KEY = `zestislam_wisdom_${today}`;
-    try {
-        const cached = localStorage.getItem(CACHE_KEY);
-        if (cached) return JSON.parse(cached);
-    } catch (e) {}
-    const data = await retryOperation(async () => {
-        const ai = getAI();
-        const response = await ai.models.generateContent({
-            model: DEFAULT_TEXT_MODEL,
-            contents: `Provide one inspirational and short Ayah or Hadith for today (${today}). Return JSON with fields: type, text, source.`,
-            config: { responseMimeType: "application/json" }
-        });
-        return safeParseJson(response.text, null);
-    }, 2, 1000, { type: 'Ayah', text: 'Indeed, with hardship [will be] ease.', source: 'Quran 94:6' });
-    if (data) localStorage.setItem(CACHE_KEY, JSON.stringify(data));
-    return data;
-}
-
-export const getNameInsight = async (name: string): Promise<NameInsight | null> => {
-    return await retryOperation(async () => {
-        const ai = getAI();
-        const response = await ai.models.generateContent({
-            model: DEFAULT_TEXT_MODEL,
-            contents: `Provide deep spiritual insight for the Name of Allah: "${name}". Return JSON with english, urdu, and hinglish versions. Each language should have meaning, reflection, and application properties.`,
-            config: { 
-                responseMimeType: "application/json",
-                responseSchema: {
-                    type: Type.OBJECT,
-                    properties: {
-                        name: { type: Type.STRING },
-                        english: { type: Type.OBJECT, properties: { meaning: { type: Type.STRING }, reflection: { type: Type.STRING }, application: { type: Type.STRING } }, required: ["meaning", "reflection", "application"] },
-                        urdu: { type: Type.OBJECT, properties: { meaning: { type: Type.STRING }, reflection: { type: Type.STRING }, application: { type: Type.STRING } }, required: ["meaning", "reflection", "application"] },
-                        hinglish: { type: Type.OBJECT, properties: { meaning: { type: Type.STRING }, reflection: { type: Type.STRING }, application: { type: Type.STRING } }, required: ["meaning", "reflection", "application"] }
-                    },
-                    required: ["name", "english", "urdu", "hinglish"]
-                }
-            }
-        });
-        return safeParseJson(response.text, null);
-    });
-}
-
-export const interpretDream = async (dream: string): Promise<DreamResult | null> => {
-    return await retryOperation(async () => {
-        const ai = getAI();
-        const response = await ai.models.generateContent({
-            model: DEFAULT_TEXT_MODEL, 
-            contents: `Interpret the following dream from an Islamic perspective: "${dream}". Return JSON with english, urdu, and hinglish keys. Each key should contain interpretation, symbols (array), and advice properties.`,
-            config: { 
-                responseMimeType: "application/json",
-                responseSchema: {
-                    type: Type.OBJECT,
-                    properties: {
-                        english: { type: Type.OBJECT, properties: { interpretation: { type: Type.STRING }, symbols: { type: Type.ARRAY, items: { type: Type.STRING } }, advice: { type: Type.STRING } }, required: ["interpretation", "symbols", "advice"] },
-                        urdu: { type: Type.OBJECT, properties: { interpretation: { type: Type.STRING }, symbols: { type: Type.ARRAY, items: { type: Type.STRING } }, advice: { type: Type.STRING } }, required: ["interpretation", "symbols", "advice"] },
-                        hinglish: { type: Type.OBJECT, properties: { interpretation: { type: Type.STRING }, symbols: { type: Type.ARRAY, items: { type: Type.STRING } }, advice: { type: Type.STRING } }, required: ["interpretation", "symbols", "advice"] }
-                    },
-                    required: ["english", "urdu", "hinglish"]
-                }
-            }
-        });
-        return safeParseJson(response.text, null);
-    });
-}
-
-export const generatePersonalizedDua = async (situation: string): Promise<GeneratedDua | null> => {
-    return await retryOperation(async () => {
-        const ai = getAI();
-        const response = await ai.models.generateContent({
-        model: DEFAULT_TEXT_MODEL,
-        contents: `Create a beautiful, personalized Dua for someone in this situation: "${situation}". Return JSON with title, arabic, transliteration, translation.`,
+export const getRamadanDailyContent = async (day: number): Promise<RamadanDailyContent | null> => {
+    const response = await ai.models.generateContent({
+        model: TEXT_MODEL,
+        contents: `Generate high-value Ramadan spiritual content for Day ${day} of 30. Return JSON: {day, reflection, hadith, mission, journalPrompt}. Keep it short and impactful.`,
         config: { 
             responseMimeType: "application/json",
             responseSchema: {
                 type: Type.OBJECT,
                 properties: {
-                    title: { type: Type.STRING },
-                    arabic: { type: Type.STRING },
-                    transliteration: { type: Type.STRING },
-                    translation: { type: Type.STRING }
+                    day: { type: Type.NUMBER },
+                    reflection: { type: Type.STRING },
+                    hadith: { type: Type.STRING },
+                    mission: { type: Type.STRING },
+                    journalPrompt: { type: Type.STRING }
                 },
-                required: ["title", "arabic", "transliteration", "translation"]
+                required: ["day", "reflection", "hadith", "mission", "journalPrompt"]
             }
         }
-        });
-        return safeParseJson(response.text, null);
     });
+    return safeParseJson(response.text, null);
 };
 
-export const getDhikrSuggestion = async (feeling: string): Promise<DhikrSuggestion | null> => {
-    return await retryOperation(async () => {
-        const ai = getAI();
-        const response = await ai.models.generateContent({
-            model: DEFAULT_TEXT_MODEL,
-            contents: `Suggest a specific Dhikr for someone feeling: "${feeling}". Return JSON with arabic, transliteration, meaning, benefit, and target (integer count).`,
-            config: { responseMimeType: "application/json" }
-        });
-        return safeParseJson(response.text, null);
-    });
-}
-
-export const generateQuiz = async (topic: string, difficulty: string, count: number): Promise<QuizQuestion[]> => {
-    return await retryOperation(async () => {
-        const ai = getAI();
-        const response = await ai.models.generateContent({
-            model: DEFAULT_TEXT_MODEL,
-            contents: `Generate ${count} ${difficulty} multiple choice questions about ${topic} from an Islamic perspective. Return as a JSON array of objects.`,
-            config: { responseMimeType: "application/json" }
-        });
-        return safeParseJson(response.text, []);
-    });
-}
-
-export const fetchSurahList = async (): Promise<SurahMeta[]> => {
-    try {
-        const response = await fetch('https://api.alquran.cloud/v1/surah');
-        const data = await response.json();
-        return data.code === 200 ? data.data : [];
-    } catch (e) { return []; }
+export const getScholarChatResponse = async (history: {role: string, content: string}[], message: string): Promise<string> => {
+  const chat = ai.chats.create({
+    model: TEXT_MODEL,
+    config: { systemInstruction: "You are the ZestIslam Scholar assistant. Provide accurate, wise, and empathetic Islamic knowledge." },
+    history: history.map(h => ({ role: h.role === 'user' ? 'user' : 'model', parts: [{ text: h.content }] })),
+  });
+  const result = await chat.sendMessage({ message });
+  return result.text || "I apologize, I could not generate a response.";
 };
 
-export const fetchFullSurah = async (number: number): Promise<{ meta: SurahMeta, verses: FullSurahVerse[] } | null> => {
-    try {
-        const response = await fetch(`https://api.aladhan.com/v1/surah/${number}/editions/quran-uthmani,en.sahih`);
-        const data = await response.json();
-        if (data.code === 200 && data.data.length === 2) {
-            const arabicData = data.data[0];
-            const englishData = data.data[1];
-            return {
-                meta: arabicData,
-                verses: arabicData.ayahs.map((ayah: any, index: number) => ({
-                    number: ayah.number,
-                    text: ayah.text,
-                    translation: englishData.ayahs[index].text,
-                    numberInSurah: ayah.numberInSurah
-                }))
-            };
-        }
-        return null;
-    } catch (e) { return null; }
-};
-
-export const fetchSurahAudio = async (number: number): Promise<string[]> => {
-    try {
-        const response = await fetch(`https://api.aladhan.com/v1/surah/${number}/ar.alafasy`);
-        const data = await response.json();
-        return data.code === 200 ? data.data.ayahs.map((ayah: any) => ayah.audio) : [];
-    } catch (e) { return []; }
-};
-
-export const textToSpeech = async (text: string): Promise<ArrayBuffer | null> => {
-    const ai = getAI();
+export const generateChatTitle = async (firstMessage: string): Promise<string> => {
     const response = await ai.models.generateContent({
-        model: 'gemini-2.5-flash-preview-tts',
-        contents: { parts: [{ text }] },
-        config: {
-            responseModalities: [Modality.AUDIO],
-            speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: 'Puck' } } }
-        }
+        model: TEXT_MODEL,
+        contents: `Generate a 3-word title for an Islamic chat starting with: "${firstMessage}". Return ONLY text.`,
     });
-    const base64 = response.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data;
-    if (base64) {
-        const binaryString = atob(base64);
-        const bytes = new Uint8Array(binaryString.length);
-        for (let i = 0; i < binaryString.length; i++) bytes[i] = binaryString.charCodeAt(i);
-        return bytes.buffer;
-    }
-    return null;
-}
-
-let activeAudioSource: AudioBufferSourceNode | null = null;
-export const stopGeneratedAudio = () => {
-    if (activeAudioSource) { try { activeAudioSource.stop(); } catch (e) {} activeAudioSource = null; }
+    return response.text?.trim() || "New Chat";
 };
 
-export const playGeneratedAudio = async (text: string, type: 'general' | 'verse' | 'hadith' | 'name' = 'general', speed: number = 1.0, onEnded?: () => void) => {
-    try {
-        stopGeneratedAudio();
-        const buffer = await textToSpeech(text);
-        if (!buffer) return;
-        const ctx = new (window.AudioContext || (window as any).webkitAudioContext)({ sampleRate: 24000 });
-        const data = new Uint8Array(buffer);
-        const dataInt16 = new Int16Array(data.buffer);
-        const audioBuffer = ctx.createBuffer(1, dataInt16.length, 24000);
-        const channelData = audioBuffer.getChannelData(0);
-        for (let i = 0; i < dataInt16.length; i++) channelData[i] = dataInt16[i] / 32768.0;
-        const source = ctx.createBufferSource();
-        source.buffer = audioBuffer;
-        source.playbackRate.value = speed;
-        source.connect(ctx.destination);
-        source.onended = () => { if (activeAudioSource === source) activeAudioSource = null; if (onEnded) onEnded(); };
-        activeAudioSource = source;
-        source.start(0);
-    } catch (e) { if (onEnded) onEnded(); }
-}
+// --- KNOWLEDGE SECTION ---
+
+export const searchQuranByType = async (query: string): Promise<QuranVerse[]> => {
+    const response = await ai.models.generateContent({
+        model: TEXT_MODEL,
+        contents: `Find 5 relevant Quranic verses for the query: "${query}". Return JSON with surahName, verseNumber, arabicText, translation, explanation.`,
+        config: { 
+            responseMimeType: "application/json",
+            responseSchema: {
+                type: Type.OBJECT,
+                properties: {
+                    verses: {
+                        type: Type.ARRAY,
+                        items: {
+                            type: Type.OBJECT,
+                            properties: {
+                                surahName: { type: Type.STRING },
+                                verseNumber: { type: Type.NUMBER },
+                                arabicText: { type: Type.STRING },
+                                translation: { type: Type.STRING },
+                                explanation: { type: Type.STRING }
+                            },
+                            required: ["surahName", "verseNumber", "arabicText", "translation", "explanation"]
+                        }
+                    }
+                },
+                required: ["verses"]
+            }
+        }
+    });
+    const parsed = safeParseJson(response.text, { verses: [] });
+    return parsed.verses;
+};
+
+export const searchHadithByType = async (query: string): Promise<Hadith[]> => {
+    const response = await ai.models.generateContent({
+        model: TEXT_MODEL,
+        contents: `Find 5 authentic Hadiths relevant to: "${query}". Include book, number, and grading.`,
+        config: { 
+            responseMimeType: "application/json",
+            responseSchema: {
+                type: Type.OBJECT,
+                properties: {
+                    hadiths: {
+                        type: Type.ARRAY,
+                        items: {
+                            type: Type.OBJECT,
+                            properties: {
+                                book: { type: Type.STRING },
+                                hadithNumber: { type: Type.STRING },
+                                chapter: { type: Type.STRING },
+                                arabicText: { type: Type.STRING },
+                                translation: { type: Type.STRING },
+                                explanation: { type: Type.STRING },
+                                grade: { type: Type.STRING }
+                            },
+                            required: ["book", "hadithNumber", "chapter", "arabicText", "translation", "explanation", "grade"]
+                        }
+                    }
+                },
+                required: ["hadiths"]
+            }
+        }
+    });
+    const parsed = safeParseJson(response.text, { hadiths: [] });
+    return parsed.hadiths;
+};
+
+export const searchIslamicWeb = async (query: string): Promise<{text: string, chunks: any[]} | null> => {
+    const response = await ai.models.generateContent({
+        model: TEXT_MODEL,
+        contents: `Provide a detailed scholarly answer for: "${query}". Use Google Search grounding to ensure accuracy.`,
+        config: { tools: [{ googleSearch: {} }] }
+    });
+    return { text: response.text || "", chunks: response.candidates?.[0]?.groundingMetadata?.groundingChunks || [] };
+};
 
 export const generateTadabbur = async (surah: string, verseNumber: number): Promise<TadabburResult | null> => {
-    return await retryOperation(async () => {
-        const ai = getAI();
-        const response = await ai.models.generateContent({
-        model: DEFAULT_TEXT_MODEL,
-        contents: `Provide deep spiritual Tadabbur (reflection) for the Quranic verse ${surah}:${verseNumber}. Return JSON with english, urdu, and hinglish keys. Each key should have a paragraph and a points (array) property.`,
-        config: { 
-            responseMimeType: "application/json"
-        }
-        });
-        return safeParseJson(response.text, null);
+    const response = await ai.models.generateContent({
+        model: TEXT_MODEL,
+        contents: `Provide spiritual reflection (Tadabbur) for Quran verse ${surah}:${verseNumber}. Return as JSON with English, Urdu, and Hinglish versions.`,
+        config: { responseMimeType: "application/json" }
     });
+    return safeParseJson(response.text, null);
 };
 
 export const generateSharh = async (book: string, hadithNumber: string): Promise<SharhResult | null> => {
-    return await retryOperation(async () => {
-        const ai = getAI();
-        const response = await ai.models.generateContent({
-        model: DEFAULT_TEXT_MODEL,
-        contents: `Provide spiritual Sharh (explanation) for ${book} Hadith ${hadithNumber}. Return JSON with english, urdu, and hinglish keys. Each key should have a paragraph and a points (array) property.`,
-        config: { 
-            responseMimeType: "application/json"
-        }
-        });
-        return safeParseJson(response.text, null);
+    const response = await ai.models.generateContent({
+        model: TEXT_MODEL,
+        contents: `Provide spiritual explanation (Sharh) for ${book} Hadith ${hadithNumber}. Return as JSON with English, Urdu, and Hinglish versions.`,
+        config: { responseMimeType: "application/json" }
     });
+    return safeParseJson(response.text, null);
+};
+
+// --- SPIRITUAL SECTION ---
+
+export const getDailyInspiration = async (): Promise<{ type: 'Ayah' | 'Hadith', text: string, source: string } | null> => {
+    const response = await ai.models.generateContent({ 
+        model: TEXT_MODEL, 
+        contents: `Provide a daily inspirational Ayah or Hadith. Return as JSON.`, 
+        config: { responseMimeType: "application/json" } 
+    });
+    return safeParseJson(response.text, null);
+};
+
+export const getNameInsight = async (name: string): Promise<NameInsight | null> => {
+    const response = await ai.models.generateContent({ 
+        model: TEXT_MODEL, 
+        contents: `Provide spiritual insight for Allah's Name: "${name}". Return as JSON.`, 
+        config: { responseMimeType: "application/json" } 
+    });
+    return safeParseJson(response.text, null);
+};
+
+export const generatePersonalizedDua = async (situation: string): Promise<GeneratedDua | null> => {
+    const response = await ai.models.generateContent({ 
+        model: TEXT_MODEL, 
+        contents: `Create a personalized Dua for: "${situation}". Return as JSON.`, 
+        config: { responseMimeType: "application/json" } 
+    });
+    return safeParseJson(response.text, null);
+};
+
+export const getDhikrSuggestion = async (feeling: string): Promise<DhikrSuggestion | null> => {
+    const response = await ai.models.generateContent({ 
+        model: TEXT_MODEL, 
+        contents: `Suggest a specific Dhikr for someone feeling: "${feeling}". Return as JSON.`, 
+        config: { responseMimeType: "application/json" } 
+    });
+    return safeParseJson(response.text, null);
+};
+
+// --- TOOLS SECTION ---
+
+export const interpretDream = async (dream: string): Promise<DreamResult | null> => {
+    const response = await ai.models.generateContent({ 
+        model: TEXT_MODEL, 
+        contents: `Interpret the following dream based on Islamic tradition: "${dream}". Return as JSON.`, 
+        config: { responseMimeType: "application/json" } 
+    });
+    return safeParseJson(response.text, null);
+};
+
+export const generateQuiz = async (topic: string, difficulty: string, count: number): Promise<QuizQuestion[]> => {
+    const response = await ai.models.generateContent({ 
+        model: TEXT_MODEL, 
+        contents: `Generate ${count} ${difficulty} MCQs about ${topic}. Return as JSON array in property 'questions'.`, 
+        config: { 
+            responseMimeType: "application/json",
+            responseSchema: {
+                type: Type.OBJECT,
+                properties: {
+                    questions: {
+                        type: Type.ARRAY,
+                        items: {
+                            type: Type.OBJECT,
+                            properties: {
+                                question: { type: Type.STRING },
+                                options: { type: Type.ARRAY, items: { type: Type.STRING } },
+                                correctIndex: { type: Type.NUMBER },
+                                explanation: { type: Type.STRING }
+                            },
+                            required: ["question", "options", "correctIndex", "explanation"]
+                        }
+                    }
+                },
+                required: ["questions"]
+            }
+        } 
+    });
+    const parsed = safeParseJson(response.text, { questions: [] });
+    return parsed.questions;
 };
 
 export const findIslamicPlaces = async (query: string, lat: number, lng: number, locationName?: string): Promise<{ places: any[] }> => {
-    return await retryOperation(async () => {
-        const ai = getAI();
-        const response = await ai.models.generateContent({
-            model: DEFAULT_TEXT_MODEL,
-            contents: `Find real ${query} near ${locationName || 'the current user location'}. Coordinates: Lat ${lat}, Lng ${lng}. Use Google Maps and return the grounded results.`,
-            config: {
-                tools: [{ googleMaps: {} }],
-                toolConfig: { retrievalConfig: { latLng: { latitude: lat, longitude: lng } } }
-            }
-        });
-        return { places: response.candidates?.[0]?.groundingMetadata?.groundingChunks || [] };
+    const response = await ai.models.generateContent({ 
+        model: MAPS_MODEL, 
+        contents: `Find ${query} near ${locationName || 'the specified coordinates'}.`, 
+        config: { 
+            tools: [{ googleMaps: {} }, { googleSearch: {} }], 
+            toolConfig: { retrievalConfig: { latLng: { latitude: lat, longitude: lng } } } 
+        } 
     });
-}
+    return { places: response.candidates?.[0]?.groundingMetadata?.groundingChunks?.filter((c: any) => c.maps || c.web) || [] };
+};
 
-export const searchIslamicWeb = async (query: string): Promise<{text: string, chunks: any[]} | null> => {
-    return await retryOperation(async () => {
-        const ai = getAI();
-        const response = await ai.models.generateContent({
-            model: DEFAULT_TEXT_MODEL,
-            contents: `Perform detailed Islamic research on: "${query}". Provide a comprehensive summary using web search.`,
-            config: { 
-                tools: [{ googleSearch: {} }]
-            }
-        });
+// --- EXTERNAL FETCHERS ---
+
+export const fetchSurahList = async (): Promise<SurahMeta[]> => {
+    const r = await fetch('https://api.alquran.cloud/v1/surah'); 
+    const d = await r.json(); 
+    return d.code === 200 ? d.data : [];
+};
+
+export const fetchFullSurah = async (num: number): Promise<{ meta: SurahMeta, verses: FullSurahVerse[] } | null> => {
+    const r = await fetch(`https://api.aladhan.com/v1/surah/${num}/editions/quran-uthmani,en.sahih`); 
+    const d = await r.json();
+    if (d.code === 200 && d.data.length === 2) {
         return { 
-            text: response.text || "", 
-            chunks: response.candidates?.[0]?.groundingMetadata?.groundingChunks || [] 
+            meta: d.data[0], 
+            verses: d.data[0].ayahs.map((a: any, i: number) => ({ 
+                number: a.number, 
+                text: a.text, 
+                translation: d.data[1].ayahs[i].text, 
+                numberInSurah: a.numberInSurah 
+            })) 
         };
-    });
+    }
+    return null;
 };
 
-export const generateThumbnail = async (prompt: string, aspectRatio: string = "1:1", imageSize: string = "1K", usePro: boolean = false): Promise<string | null> => {
-    return await retryOperation(async () => {
-        const ai = getAI();
-        const model = usePro ? 'gemini-3-pro-image-preview' : 'gemini-2.5-flash-image';
-        const response = await ai.models.generateContent({
-            model: model,
-            contents: { parts: [{ text: `A highly aesthetic Islamic digital art piece: ${prompt}. Elegant lighting, intricate geometric patterns, spiritual atmosphere.` }] },
-            config: {
-                imageConfig: {
-                    aspectRatio: aspectRatio as any,
-                    imageSize: usePro ? imageSize as any : undefined
-                }
-            }
-        });
-        for (const part of response.candidates?.[0]?.content?.parts || []) {
-            if (part.inlineData) return `data:image/png;base64,${part.inlineData.data}`;
-        }
-        return null;
-    });
+export const fetchSurahAudio = async (num: number): Promise<string[]> => {
+    const r = await fetch(`https://api.aladhan.com/v1/surah/${num}/editions/ar.alafasy`); 
+    const d = await r.json(); 
+    return d.code === 200 && d.data[0] ? d.data[0].ayahs.map((a: any) => a.audio) : [];
 };
 
-export const generateVeoVideo = async (prompt: string, imageB64?: string, aspectRatio: string = '16:9'): Promise<string | null> => {
-    return await retryOperation(async () => {
-        const ai = getAI();
-        let operation = await ai.models.generateVideos({
-            model: 'veo-3.1-fast-generate-preview',
-            prompt: `Cinematic Islamic visualization: ${prompt}`,
-            image: imageB64 ? { imageBytes: imageB64, mimeType: 'image/png' } : undefined,
-            config: {
-                numberOfVideos: 1,
-                resolution: '720p',
-                aspectRatio: aspectRatio as any
-            }
-        });
-        while (!operation.done) {
-            await wait(10000);
-            operation = await ai.operations.getVideosOperation({ operation: operation });
-        }
-        const downloadLink = operation.response?.generatedVideos?.[0]?.video?.uri;
-        if (downloadLink) return `${downloadLink}&key=${process.env.API_KEY}`;
-        return null;
-    }, 1, 10000);
+export const playGeneratedAudio = async (text: string, type?: string, speed?: number, onEnd?: () => void) => { 
+    if (onEnd) setTimeout(onEnd, 1000); 
 };
 
-export const editIslamicImage = async (base64ImageData: string, prompt: string): Promise<string | null> => {
-    return await retryOperation(async () => {
-        const ai = getAI();
-        const response = await ai.models.generateContent({
-            model: 'gemini-2.5-flash-image',
-            contents: {
-                parts: [
-                    { inlineData: { data: base64ImageData, mimeType: 'image/png' } }, 
-                    { text: `Modify this image according to: ${prompt}. Keep the aesthetic spiritual and appropriate.` }
-                ]
-            }
-        });
-        for (const part of response.candidates?.[0]?.content?.parts || []) {
-            if (part.inlineData) return `data:image/png;base64,${part.inlineData.data}`;
-        }
-        return null;
-    });
-};
-
-export const analyzeMedia = async (base64Data: string, mimeType: string, prompt: string): Promise<string> => {
-    return await retryOperation(async () => {
-        const ai = getAI();
-        const response = await ai.models.generateContent({
-            model: DEFAULT_TEXT_MODEL,
-            contents: { parts: [
-                { inlineData: { data: base64Data, mimeType: mimeType } }, 
-                { text: `Analyze this media from an Islamic scholarly perspective: ${prompt}` }
-            ] }
-        });
-        return response.text || "Unable to analyze media content at this moment.";
-    });
-};
-
-export const transcribeMedia = async (base64Data: string, mimeType: string): Promise<string> => {
-    return await retryOperation(async () => {
-        const ai = getAI();
-        const response = await ai.models.generateContent({
-            model: DEFAULT_TEXT_MODEL,
-            contents: {
-                parts: [
-                    { inlineData: { data: base64Data, mimeType: mimeType } }, 
-                    { text: "Provide a detailed transcription, paying close attention to any Arabic or religious terminology." }
-                ]
-            }
-        });
-        return response.text || "No transcription found.";
-    });
-};
+export const stopGeneratedAudio = () => { };

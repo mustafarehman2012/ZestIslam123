@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Sparkles, Loader2, Copy, Check, Feather } from 'lucide-react';
+import { Sparkles, Loader2, Copy, Check, Feather, MessageCircle, Heart, Share2, ArrowRight, Zap } from 'lucide-react';
 import { generatePersonalizedDua } from '../services/geminiService';
 import { GeneratedDua } from '../types';
 
@@ -14,7 +14,7 @@ const DuaGenerator: React.FC = () => {
     setLoading(true);
     setDua(null);
     const result = await generatePersonalizedDua(situation);
-    setDua(result);
+    if (result) setDua(result);
     setLoading(false);
   };
 
@@ -28,75 +28,53 @@ const DuaGenerator: React.FC = () => {
   };
 
   return (
-    <div className="max-w-3xl mx-auto space-y-8">
-       <div className="text-center space-y-4">
-        <h2 className="text-3xl font-bold text-slate-800 dark:text-white">Personalized Dua Generator</h2>
-        <p className="text-slate-500 dark:text-slate-400">Describe your heart's state, and receive a beautiful supplication.</p>
+    <div className="max-w-4xl mx-auto space-y-10 animate-fade-in pb-20 px-4">
+       <div className="text-center space-y-6 pt-6">
+        <div className="inline-flex items-center gap-2 px-6 py-2 glass-card rounded-full text-[9px] font-black uppercase tracking-[0.4em] text-teal-600">
+            <Zap className="w-3 h-3 fill-current" /> Spiritual Echo
+        </div>
+        <h2 className="text-4xl md:text-5xl font-black text-slate-900 dark:text-white tracking-tighter leading-none">Dua <span className="bg-gradient-to-r from-emerald-600 to-teal-500 bg-clip-text text-transparent">Composer</span>.</h2>
+        <p className="text-slate-500 dark:text-slate-400 text-base max-w-xl mx-auto">Synthesizing authentic supplications from your current emotional state.</p>
       </div>
 
-      <div className="bg-white dark:bg-slate-900 p-8 rounded-[2.5rem] shadow-xl border border-emerald-50 dark:border-emerald-900/30">
-        <div className="flex items-center gap-3 mb-4 text-emerald-600 dark:text-emerald-400 font-bold text-sm uppercase tracking-wider">
-            <Feather className="w-4 h-4" />
-            Your Situation
+      <div className="glass-card p-10 rounded-[3rem] shadow-2xl relative overflow-hidden group">
+        <div className="relative z-10 space-y-8">
+            <div className="flex items-center gap-4">
+                <div className="w-12 h-12 bg-emerald-100 dark:bg-emerald-900/40 rounded-2xl flex items-center justify-center text-emerald-600 shadow-inner"><Feather className="w-6 h-6" /></div>
+                <div><h4 className="font-black text-slate-900 dark:text-white uppercase tracking-[0.1em] text-xs">Intent</h4><p className="text-[9px] text-slate-400 font-bold uppercase tracking-widest">Share your struggle or joy</p></div>
+            </div>
+            <textarea
+                value={situation}
+                onChange={(e) => setSituation(e.target.value)}
+                placeholder="Share what is on your heart..."
+                className="w-full p-8 rounded-[2rem] bg-slate-50/50 dark:bg-slate-950/50 border-none focus:ring-4 focus:ring-emerald-500/10 outline-none text-xl font-black resize-none h-48 transition-all placeholder:text-slate-300 dark:placeholder:text-slate-600 text-slate-900 dark:text-white"
+            />
+            <button
+                onClick={handleGenerate}
+                disabled={loading || !situation.trim()}
+                className="w-full bg-slate-900 dark:bg-emerald-600 text-white py-6 rounded-[2rem] font-black text-[10px] uppercase tracking-[0.4em] transition-all flex items-center justify-center gap-4 shadow-xl active:scale-95 disabled:opacity-50"
+            >
+                {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : <Sparkles className="w-5 h-5" />}
+                {loading ? 'Synthesizing...' : 'Generate Supplication'}
+            </button>
         </div>
-        <textarea
-            value={situation}
-            onChange={(e) => setSituation(e.target.value)}
-            placeholder="E.g., I am about to take a difficult exam, My friend is sick, I want to thank Allah for a new job..."
-            className="w-full p-6 rounded-3xl bg-slate-50 dark:bg-slate-800 border-2 border-transparent focus:border-emerald-500 focus:bg-white dark:focus:bg-slate-900 outline-none text-slate-700 dark:text-slate-200 resize-none h-40 mb-6 placeholder:text-slate-400 transition-all text-lg"
-        />
-        <button
-            onClick={handleGenerate}
-            disabled={loading || !situation}
-            className="w-full bg-gradient-to-r from-emerald-600 to-teal-700 hover:from-emerald-500 hover:to-teal-600 text-white py-5 rounded-2xl font-bold text-lg transition-all flex items-center justify-center gap-3 shadow-lg shadow-emerald-200 dark:shadow-none disabled:opacity-50 disabled:shadow-none transform active:scale-[0.99]"
-        >
-            {loading ? (
-                <>
-                    <Loader2 className="w-6 h-6 animate-spin" />
-                    Connecting to knowledge...
-                </>
-            ) : (
-                <>
-                    <Sparkles className="w-6 h-6" />
-                    Generate Dua
-                </>
-            )}
-        </button>
       </div>
 
       {dua && (
-        <div className="relative bg-[#0F172A] rounded-[3rem] overflow-hidden shadow-2xl animate-fade-in-up border border-slate-800 text-center">
-             {/* Decorative Background */}
-            <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/arabesque.png')] opacity-10 pointer-events-none"></div>
-            <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-emerald-500 via-yellow-400 to-emerald-500"></div>
-
-            <div className="relative z-10 p-10 space-y-8">
-                <div className="flex justify-between items-start">
-                    <h3 className="text-2xl font-bold text-emerald-400">{dua.title}</h3>
-                    <button onClick={copyToClipboard} className="text-slate-400 hover:text-white hover:bg-white/10 p-3 rounded-xl transition-all">
-                        {copied ? <Check className="w-5 h-5 text-emerald-400" /> : <Copy className="w-5 h-5" />}
-                    </button>
-                </div>
-                
-                <div className="py-4">
-                    <p className="font-quran text-4xl md:text-5xl text-white drop-shadow-lg" dir="rtl">
-                        {dua.arabic}
-                    </p>
-                </div>
-
-                <div className="space-y-6">
-                    <div className="bg-white/5 p-6 rounded-2xl border border-white/10 backdrop-blur-sm">
-                        <p className="text-emerald-400 font-bold text-xs uppercase tracking-widest mb-2">Transliteration</p>
-                        <p className="text-slate-300 italic text-lg leading-relaxed">
-                            {dua.transliteration}
-                        </p>
+        <div className="relative bg-white dark:bg-slate-900 rounded-[3rem] overflow-hidden shadow-2xl animate-fade-in-up border border-slate-100 dark:border-white/5">
+            <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-emerald-500 via-teal-400 to-indigo-600"></div>
+            <div className="relative z-10 p-12 space-y-12">
+                <div className="flex flex-col md:flex-row justify-between items-center gap-8">
+                    <div className="text-center md:text-left"><h3 className="text-[9px] font-black text-emerald-600 dark:text-emerald-400 uppercase tracking-[0.5em] mb-2">Invocation</h3><h4 className="text-3xl font-black text-slate-900 dark:text-white tracking-tighter">{dua.title}</h4></div>
+                    <div className="flex gap-3">
+                        <button onClick={copyToClipboard} className="p-5 bg-slate-50 dark:bg-white/5 hover:bg-emerald-50 dark:hover:bg-white/10 text-slate-900 dark:text-white rounded-2xl transition-all border border-slate-100 dark:border-white/10 group">{copied ? <Check className="w-5 h-5 text-emerald-600" /> : <Copy className="w-5 h-5 text-slate-400 group-hover:text-emerald-600" />}</button>
+                        <button className="p-5 bg-slate-50 dark:bg-white/5 hover:bg-emerald-50 dark:hover:bg-white/10 text-slate-900 dark:text-white rounded-2xl transition-all border border-slate-100 dark:border-white/10 group"><Share2 className="w-5 h-5 text-slate-400 group-hover:text-emerald-600" /></button>
                     </div>
-                    <div>
-                         <p className="text-emerald-400 font-bold text-xs uppercase tracking-widest mb-2">Meaning</p>
-                        <p className="text-slate-200 text-xl font-medium">
-                            {dua.translation}
-                        </p>
-                    </div>
+                </div>
+                <div className="py-12 px-8 bg-slate-50 dark:bg-white/5 rounded-[2.5rem] border border-slate-100 dark:border-white/5 backdrop-blur-2xl text-center"><p className="font-quran text-5xl md:text-6xl text-slate-900 dark:text-white leading-relaxed">{dua.arabic}</p></div>
+                <div className="grid md:grid-cols-2 gap-8">
+                    <div className="p-8 bg-slate-50 dark:bg-white/5 rounded-[2rem] border border-slate-100 dark:border-white/5"><p className="text-[9px] font-black text-emerald-600 dark:text-emerald-400 uppercase tracking-widest mb-4">Translation</p><p className="text-slate-600 dark:text-slate-300 italic text-xl font-serif leading-relaxed">{dua.transliteration}</p></div>
+                    <div className="p-8 bg-emerald-50 dark:bg-emerald-600/10 rounded-[2rem] border border-emerald-100 dark:border-emerald-500/20"><p className="text-[9px] font-black text-emerald-600 dark:text-emerald-400 uppercase tracking-widest mb-4">Meaning</p><p className="text-slate-900 dark:text-white text-xl font-black leading-tight tracking-tight">{dua.translation}</p></div>
                 </div>
             </div>
         </div>

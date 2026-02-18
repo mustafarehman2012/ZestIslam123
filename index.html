@@ -2,8 +2,8 @@
 <html lang="en">
   <head>
     <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>ZestIslam</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=0" />
+    <title>ZestIslam | Modern AI Companion</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
       tailwind.config = {
@@ -15,148 +15,89 @@
               arabic: ['Amiri', 'serif'],
             },
             colors: {
-              slate: {
-                850: '#1e293b',
-                950: '#020617',
-              }
-            }
+              emerald: { 950: '#011c16' },
+              slate: { 850: '#151e2d', 950: '#020617' }
+            },
+            borderRadius: { '4xl': '2rem', '5xl': '2.5rem' }
           }
         }
       }
     </script>
-    <link href="https://fonts.googleapis.com/css2?family=Amiri:ital,wght@0,400;0,700;1,400&family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Amiri:ital,wght@0,400;0,700;1,400&family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <style>
-      :root {
-        --emerald-500: #10b981;
-        --slate-100: #f1f5f9;
-        --slate-200: #e2e8f0;
-        --slate-400: #94a3b8;
-        --slate-800: #1e293b;
-        --slate-900: #0f172a;
-      }
-
       body {
         font-family: 'Plus Jakarta Sans', sans-serif;
-        background-color: #f8fafc;
-        color: #0f172a;
-      }
-
-      .dark body {
-        background-color: #020617;
-        color: #f1f5f9;
+        @apply bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-white antialiased overflow-x-hidden transition-colors duration-300;
       }
       
-      /* Optimized Arabic Typography */
+      .mesh-gradient {
+        position: fixed;
+        inset: 0;
+        z-index: -1;
+        background-color: #f8fafc;
+        background-image: 
+          radial-gradient(at 0% 0%, rgba(16, 185, 129, 0.1) 0px, transparent 50%),
+          radial-gradient(at 100% 0%, rgba(20, 184, 166, 0.08) 0px, transparent 50%),
+          radial-gradient(at 100% 100%, rgba(79, 70, 229, 0.05) 0px, transparent 50%),
+          radial-gradient(at 0% 100%, rgba(16, 185, 129, 0.08) 0px, transparent 50%);
+        transition: background 0.5s ease;
+      }
+
+      .dark .mesh-gradient {
+        background-color: #020617;
+        background-image: 
+          radial-gradient(at 0% 0%, rgba(16, 185, 129, 0.15) 0px, transparent 50%),
+          radial-gradient(at 100% 0%, rgba(20, 184, 166, 0.1) 0px, transparent 50%),
+          radial-gradient(at 100% 100%, rgba(79, 70, 229, 0.08) 0px, transparent 50%),
+          radial-gradient(at 0% 100%, rgba(16, 185, 129, 0.12) 0px, transparent 50%);
+      }
+
       .font-quran {
         font-family: 'Amiri', serif;
         line-height: 2.2;
         direction: rtl;
-        font-feature-settings: "kern" 1, "liga" 1;
       }
 
-      .font-arabic {
-        font-family: 'Amiri', serif;
-      }
-      
-      /* Custom Scrollbar */
-      ::-webkit-scrollbar {
-        width: 6px;
-        height: 6px;
-      }
-      ::-webkit-scrollbar-track {
-        background: transparent;
-      }
-      ::-webkit-scrollbar-thumb {
-        background: #cbd5e1;
-        border-radius: 10px;
-      }
-      .dark ::-webkit-scrollbar-thumb {
-        background: #334155;
-      }
-      ::-webkit-scrollbar-thumb:hover {
-        background: #94a3b8;
+      .glass-card {
+        @apply bg-white/60 dark:bg-slate-900/40 backdrop-blur-xl border border-white/20 dark:border-white/5 shadow-xl text-slate-900 dark:text-white;
       }
 
-      .custom-scrollbar::-webkit-scrollbar {
-        width: 5px;
-      }
-      .custom-scrollbar::-webkit-scrollbar-track {
-        background: transparent;
-      }
-      .custom-scrollbar::-webkit-scrollbar-thumb {
-        background: #e2e8f0;
-        border-radius: 9999px;
-      }
-      .dark .custom-scrollbar::-webkit-scrollbar-thumb {
-        background: #1e293b;
-      }
+      .no-scrollbar::-webkit-scrollbar { display: none; }
+      .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
 
-      /* Animation Utilities */
-      .animate-fade-in {
-        animation: fadeIn 0.4s ease-out forwards;
+      ::-webkit-scrollbar { width: 4px; height: 4px; }
+      ::-webkit-scrollbar-thumb { background: #10b981; border-radius: 10px; }
+
+      @keyframes float {
+        0%, 100% { transform: translateY(0); }
+        50% { transform: translateY(-8px); }
       }
+      .animate-float { animation: float 6s ease-in-out infinite; }
+
       .animate-fade-in-up {
         animation: fadeInUp 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
       }
-      .animate-fade-in-left {
-        animation: fadeInLeft 0.4s ease-out forwards;
-      }
-      
-      @keyframes fadeIn {
-        from { opacity: 0; }
-        to { opacity: 1; }
-      }
       @keyframes fadeInUp {
-        from { opacity: 0; transform: translateY(15px); }
+        from { opacity: 0; transform: translateY(20px); }
         to { opacity: 1; transform: translateY(0); }
-      }
-      @keyframes fadeInLeft {
-        from { opacity: 0; transform: translateX(20px); }
-        to { opacity: 1; transform: translateX(0); }
-      }
-
-      /* Glassmorphism Utilities */
-      .glass {
-        background: rgba(255, 255, 255, 0.7);
-        backdrop-filter: blur(10px);
-        -webkit-backdrop-filter: blur(10px);
-      }
-      .dark .glass {
-        background: rgba(15, 23, 42, 0.6);
-      }
-      
-      /* Pattern Overlay - Using CSS Grid Pattern instead of images to avoid 404 */
-      .bg-pattern {
-        background-image: radial-gradient(#cbd5e1 0.5px, transparent 0.5px);
-        background-size: 24px 24px;
-      }
-      .dark .bg-pattern {
-        background-image: radial-gradient(#334155 0.5px, transparent 0.5px);
-      }
-
-      .no-scrollbar::-webkit-scrollbar {
-          display: none;
-      }
-      .no-scrollbar {
-          -ms-overflow-style: none;
-          scrollbar-width: none;
       }
     </style>
   <script type="importmap">
 {
   "imports": {
-    "react": "https://aistudiocdn.com/react@^19.2.1",
-    "react-dom/": "https://aistudiocdn.com/react-dom@^19.2.1/",
-    "react/": "https://aistudiocdn.com/react@^19.2.1/",
-    "@google/genai": "https://aistudiocdn.com/@google/genai@^1.31.0",
-    "lucide-react": "https://aistudiocdn.com/lucide-react@^0.556.0",
-    "marked": "https://aistudiocdn.com/marked@^15.0.0",
-    "@supabase/supabase-js": "https://esm.sh/@supabase/supabase-js@2"
+    "react": "https://esm.sh/react@^19.2.4",
+    "react-dom/": "https://esm.sh/react-dom@^19.2.4/",
+    "react/": "https://esm.sh/react@^19.2.4/",
+    "@google/genai": "https://esm.sh/@google/genai@^1.41.0",
+    "lucide-react": "https://esm.sh/lucide-react@^0.569.0",
+    "marked": "https://esm.sh/marked@^17.0.2",
+    "@supabase/supabase-js": "https://esm.sh/@supabase/supabase-js@^2.95.3"
   }
 }
 </script>
 </head>
-  <body class="bg-pattern">
+  <body>
+    <div class="mesh-gradient"></div>
     <div id="root"></div>
   </body>
 </html>

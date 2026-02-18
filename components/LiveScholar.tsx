@@ -1,131 +1,72 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Mic, MicOff, Activity, XCircle, Volume2, VolumeX, Gauge, PauseCircle } from 'lucide-react';
+import { Mic, MicOff, Activity, XCircle, Volume2, VolumeX, PauseCircle, Sparkles, Info, Loader2 } from 'lucide-react';
 import { GoogleGenAI, LiveServerMessage, Modality } from '@google/genai';
 
 const LiveScholar: React.FC = () => {
     const [connected, setConnected] = useState(false);
     const [error, setError] = useState<string | null>(null);
-    const [status, setStatus] = useState("Ready to connect");
-    
-    const [volume, setVolume] = useState(1.0);
-    const [playbackSpeed, setPlaybackSpeed] = useState(1.0);
-    const [micMuted, setMicMuted] = useState(false);
+    const [status, setStatus] = useState("Sanctuary Ready");
     const [duration, setDuration] = useState(0);
+    const [micMuted, setMicMuted] = useState(false);
 
-    const audioContextRef = useRef<AudioContext | null>(null);
-    const inputAudioContextRef = useRef<AudioContext | null>(null);
-    const processorRef = useRef<ScriptProcessorNode | null>(null);
-    const streamRef = useRef<MediaStream | null>(null);
-    const gainNodeRef = useRef<GainNode | null>(null);
     const intervalRef = useRef<any>(null);
-    
+    const visualizerIntervalRef = useRef<any>(null);
+    const [audioLevels, setAudioLevels] = useState<number[]>(new Array(40).fill(10));
+
+    const inputAudioContextRef = useRef<AudioContext | null>(null);
+    const outputAudioContextRef = useRef<AudioContext | null>(null);
+    const streamRef = useRef<MediaStream | null>(null);
+    const processorRef = useRef<ScriptProcessorNode | null>(null);
     const nextStartTimeRef = useRef<number>(0);
     const sourcesRef = useRef<Set<AudioBufferSourceNode>>(new Set());
 
     useEffect(() => {
-        return () => {
-            stopSession();
-        };
+        return () => { stopSession(); };
     }, []);
 
     useEffect(() => {
         if (connected) {
-            intervalRef.current = setInterval(() => {
-                setDuration(prev => prev + 1);
-            }, 1000);
+            intervalRef.current = setInterval(() => setDuration(prev => prev + 1), 1000);
+            visualizerIntervalRef.current = setInterval(() => {
+                setAudioLevels(prev => prev.map(() => Math.random() * (micMuted ? 5 : 60) + 10));
+            }, 100);
         } else {
             setDuration(0);
             if (intervalRef.current) clearInterval(intervalRef.current);
+            if (visualizerIntervalRef.current) clearInterval(visualizerIntervalRef.current);
+            setAudioLevels(new Array(40).fill(10));
         }
-        return () => {
+        return () => { 
             if (intervalRef.current) clearInterval(intervalRef.current);
+            if (visualizerIntervalRef.current) clearInterval(visualizerIntervalRef.current);
         };
-    }, [connected]);
-
-    const formatDuration = (sec: number) => {
-        const m = Math.floor(sec / 60);
-        const s = sec % 60;
-        return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
-    };
-
-    useEffect(() => {
-        if (gainNodeRef.current) {
-            gainNodeRef.current.gain.value = volume;
-        }
-    }, [volume]);
-
-    useEffect(() => {
-        if (streamRef.current) {
-            const audioTracks = streamRef.current.getAudioTracks();
-            if (audioTracks.length > 0) {
-                audioTracks[0].enabled = !micMuted;
-            }
-        }
-    }, [micMuted]);
+    }, [connected, micMuted]);
 
     const stopSession = () => {
-        if (streamRef.current) {
-            streamRef.current.getTracks().forEach(track => track.stop());
-            streamRef.current = null;
-        }
-        if (processorRef.current) {
-            processorRef.current.disconnect();
-            processorRef.current.onaudioprocess = null;
-            processorRef.current = null;
-        }
-        if (inputAudioContextRef.current) {
-            inputAudioContextRef.current.close();
-            inputAudioContextRef.current = null;
-        }
-        if (audioContextRef.current) {
-            audioContextRef.current.close();
-            audioContextRef.current = null;
-        }
-
-        interruptAudio();
-        gainNodeRef.current = null;
-        setConnected(false);
-        setStatus("Disconnected");
-        setMicMuted(false);
-    };
-
-    const interruptAudio = () => {
-        sourcesRef.current.forEach(source => {
-            try { source.stop(); } catch (e) { /* ignore */ }
-        });
+        if (streamRef.current) { streamRef.current.getTracks().forEach(track => track.stop()); streamRef.current = null; }
+        if (processorRef.current) { processorRef.current.disconnect(); processorRef.current.onaudioprocess = null; processorRef.current = null; }
+        if (inputAudioContextRef.current) { inputAudioContextRef.current.close(); inputAudioContextRef.current = null; }
+        if (outputAudioContextRef.current) { outputAudioContextRef.current.close(); outputAudioContextRef.current = null; }
+        
+        sourcesRef.current.forEach(source => { try { source.stop(); } catch (e) { } });
         sourcesRef.current.clear();
-        if (audioContextRef.current) {
-             nextStartTimeRef.current = audioContextRef.current.currentTime;
-        }
+        
+        setConnected(false);
+        setMicMuted(false);
+        setStatus("Sanctuary Disconnected");
     };
 
     const startSession = async () => {
-        stopSession();
         try {
             setError(null);
-            setStatus("Connecting...");
+            setStatus("Establishing Nexus...");
             
-            // Use process.env.API_KEY directly
-            const apiKey = process.env.API_KEY;
-
-            if (!apiKey) {
-                setError("API Key is missing. Please ensure your environment is configured.");
-                setStatus("Config Error");
-                return;
-            }
-
-            const ai = new GoogleGenAI({ apiKey });
+            const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+            const inputCtx = new (window.AudioContext || (window as any).webkitAudioContext)({sampleRate: 16000});
+            inputAudioContextRef.current = inputCtx;
             
-            const inputAudioContext = new (window.AudioContext || (window as any).webkitAudioContext)({sampleRate: 16000});
-            inputAudioContextRef.current = inputAudioContext;
-
-            const outputAudioContext = new (window.AudioContext || (window as any).webkitAudioContext)({sampleRate: 24000});
-            audioContextRef.current = outputAudioContext;
-
-            const gainNode = outputAudioContext.createGain();
-            gainNode.gain.value = volume;
-            gainNode.connect(outputAudioContext.destination);
-            gainNodeRef.current = gainNode;
+            const outputCtx = new (window.AudioContext || (window as any).webkitAudioContext)({sampleRate: 24000});
+            outputAudioContextRef.current = outputCtx;
 
             const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
             streamRef.current = stream;
@@ -135,83 +76,65 @@ const LiveScholar: React.FC = () => {
                 callbacks: {
                     onopen: () => {
                         setConnected(true);
-                        setStatus("Listening...");
-                        
-                        const source = inputAudioContext.createMediaStreamSource(stream);
-                        const scriptProcessor = inputAudioContext.createScriptProcessor(4096, 1, 1);
+                        setStatus("In Dialogue...");
+                        const source = inputCtx.createMediaStreamSource(stream);
+                        const scriptProcessor = inputCtx.createScriptProcessor(4096, 1, 1);
                         processorRef.current = scriptProcessor;
                         
                         scriptProcessor.onaudioprocess = (e) => {
-                            if (!inputAudioContextRef.current || inputAudioContextRef.current.state === 'closed') return;
+                            if (micMuted) return;
                             const inputData = e.inputBuffer.getChannelData(0);
                             const pcmBlob = createBlob(inputData);
-                            sessionPromise.then(session => {
-                                if (inputAudioContextRef.current && inputAudioContextRef.current.state !== 'closed') {
-                                    session.sendRealtimeInput({ media: pcmBlob });
-                                }
-                            }).catch(err => {
-                                console.error("ZestIslam: Session send error", err);
-                                stopSession();
+                            sessionPromise.then((session) => {
+                                session.sendRealtimeInput({ media: pcmBlob });
                             });
                         };
-                        
                         source.connect(scriptProcessor);
-                        scriptProcessor.connect(inputAudioContext.destination);
+                        scriptProcessor.connect(inputCtx.destination);
                     },
-                    onmessage: async (msg: LiveServerMessage) => {
-                        const base64Audio = msg.serverContent?.modelTurn?.parts[0]?.inlineData?.data;
+                    onmessage: async (message: LiveServerMessage) => {
+                        const base64Audio = message.serverContent?.modelTurn?.parts[0]?.inlineData?.data;
                         if (base64Audio) {
-                            if (!outputAudioContext || outputAudioContext.state === 'closed') return;
-                            nextStartTimeRef.current = Math.max(nextStartTimeRef.current, outputAudioContext.currentTime);
-                            try {
-                                const audioBuffer = await decodeAudioData(decode(base64Audio), outputAudioContext, 24000, 1);
-                                const source = outputAudioContext.createBufferSource();
-                                source.buffer = audioBuffer;
-                                source.playbackRate.value = playbackSpeed;
-                                if (gainNodeRef.current) source.connect(gainNodeRef.current);
-                                source.addEventListener('ended', () => sourcesRef.current.delete(source));
-                                source.start(nextStartTimeRef.current);
-                                nextStartTimeRef.current += (audioBuffer.duration / playbackSpeed);
-                                sourcesRef.current.add(source);
-                            } catch (e) { console.error("ZestIslam: Audio decoding error", e); }
+                            nextStartTimeRef.current = Math.max(nextStartTimeRef.current, outputCtx.currentTime);
+                            const audioBuffer = await decodeAudioData(decode(base64Audio), outputCtx, 24000, 1);
+                            const source = outputCtx.createBufferSource();
+                            source.buffer = audioBuffer;
+                            source.connect(outputCtx.destination);
+                            source.addEventListener('ended', () => { sourcesRef.current.delete(source); });
+                            source.start(nextStartTimeRef.current);
+                            nextStartTimeRef.current += audioBuffer.duration;
+                            sourcesRef.current.add(source);
+                        }
+                        if (message.serverContent?.interrupted) {
+                            sourcesRef.current.forEach(s => s.stop());
+                            sourcesRef.current.clear();
+                            nextStartTimeRef.current = 0;
                         }
                     },
                     onclose: () => stopSession(),
-                    onerror: (e) => { 
-                        console.error("ZestIslam: Live Session error", e); 
-                        setError("Connection lost. Please try again."); 
-                        stopSession(); 
-                    }
+                    onerror: (e) => { console.error(e); setError("Comm Link Broken"); stopSession(); }
                 },
                 config: {
                     responseModalities: [Modality.AUDIO],
-                    speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: 'Puck' } } },
-                    systemInstruction: `You are the ZestIslam Scholar, a friendly and wise Islamic assistant created by ZestIslam.
-                    - **IDENTITY**: Always identify yourself as "The ZestIslam Scholar".
-                    - **ROLE**: Provide guidance on Quran, Hadith, and Islamic practices.
-                    - **LANGUAGE**: Speak English by default.
-                    - **TONE**: Academic yet compassionate.`
+                    speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: 'Zephyr' } } },
+                    systemInstruction: "You are the ZestIslam Live Scholar. Maintain a serene, wise, and empathetic voice. Use your knowledge of Quran and Sunnah to guide the seeker in real-time."
                 }
             });
         } catch (e) {
+            setError("Permission Denied");
             console.error(e);
-            setError("Microphone access denied or connection failed.");
-            stopSession();
         }
     };
 
     function createBlob(data: Float32Array): any {
-        const l = data.length;
-        const int16 = new Int16Array(l);
-        for (let i = 0; i < l; i++) {
-            const s = Math.max(-1, Math.min(1, data[i]));
-            int16[i] = s < 0 ? s * 0x8000 : s * 0x7FFF;
+        const int16 = new Int16Array(data.length);
+        for (let i = 0; i < data.length; i++) {
+            int16[i] = data[i] * 32768;
         }
-        let binary = '';
-        const bytes = new Uint8Array(int16.buffer);
-        const len = bytes.byteLength;
-        for (let i = 0; i < len; i++) { binary += String.fromCharCode(bytes[i]); }
-        return { data: btoa(binary), mimeType: 'audio/pcm;rate=16000' };
+        return {
+            data: encode(new Uint8Array(int16.buffer)),
+            mimeType: 'audio/pcm;rate=16000',
+        };
     }
 
     function decode(base64: string) {
@@ -222,127 +145,84 @@ const LiveScholar: React.FC = () => {
         return bytes;
     }
 
-    async function decodeAudioData(data: Uint8Array, ctx: AudioContext, sampleRate: number, numChannels: number) {
+    async function decodeAudioData(data: Uint8Array, ctx: AudioContext, sampleRate: number, numChannels: number): Promise<AudioBuffer> {
         const dataInt16 = new Int16Array(data.buffer);
         const frameCount = dataInt16.length / numChannels;
         const buffer = ctx.createBuffer(numChannels, frameCount, sampleRate);
         for (let channel = 0; channel < numChannels; channel++) {
             const channelData = buffer.getChannelData(channel);
-            for (let i = 0; i < frameCount; i++) { channelData[i] = dataInt16[i * numChannels + channel] / 32768.0; }
+            for (let i = 0; i < frameCount; i++) {
+                channelData[i] = dataInt16[i * numChannels + channel] / 32768.0;
+            }
         }
         return buffer;
     }
 
+    function encode(bytes: Uint8Array) {
+        let binary = '';
+        for (let i = 0; i < bytes.byteLength; i++) { binary += String.fromCharCode(bytes[i]); }
+        return btoa(binary);
+    }
+
+    const formatDuration = (sec: number) => {
+        const m = Math.floor(sec / 60);
+        const s = sec % 60;
+        return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+    };
+
     return (
-        <div className="flex flex-col items-center justify-center min-h-[600px] bg-slate-950 rounded-[3rem] text-white relative overflow-hidden shadow-2xl border border-slate-800 animate-fade-in">
-            <div className="absolute inset-0 opacity-10 bg-[url('https://www.transparenttextures.com/patterns/arabesque.png')]"></div>
-            <div className="absolute bottom-0 left-0 w-full h-1/2 bg-gradient-to-t from-emerald-900/20 to-transparent pointer-events-none"></div>
-            
-            <div className="z-10 text-center w-full max-w-lg px-6 flex flex-col items-center h-full py-12">
-                <div className="mb-12 space-y-2">
-                    <div className="flex items-center gap-3 justify-center">
-                        <span className={`w-2.5 h-2.5 rounded-full transition-colors duration-500 ${connected ? 'bg-emerald-400 shadow-[0_0_15px_rgba(52,211,153,0.8)]' : 'bg-slate-600'}`}></span>
-                        <h2 className="text-2xl font-bold tracking-tight text-white">Live Scholar</h2>
-                    </div>
-                    <div className="flex items-center justify-center gap-2">
-                         <p className={`text-sm font-mono transition-colors ${connected ? 'text-emerald-400' : 'text-slate-400'}`}>{status}</p>
-                         {connected && (
-                             <span className="text-xs font-mono text-slate-500 bg-slate-900/50 px-2 py-0.5 rounded border border-slate-800">
-                                 {formatDuration(duration)}
-                             </span>
-                         )}
-                    </div>
+        <div className="max-w-4xl mx-auto min-h-[calc(100vh-10rem)] flex flex-col items-center justify-center p-6 space-y-12 animate-fade-in">
+            <div className="text-center space-y-4">
+                <div className="inline-flex items-center gap-2 px-6 py-2 bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400 rounded-full text-xs font-black uppercase tracking-[0.3em] border border-emerald-100 dark:border-emerald-800">
+                    <Activity className={`w-4 h-4 ${connected ? 'animate-pulse' : ''}`} /> Live Consultation
                 </div>
-
-                <div className="relative mb-16 group cursor-pointer" onClick={connected ? () => setMicMuted(!micMuted) : startSession}>
-                    <div className={`absolute inset-0 rounded-full border border-emerald-500/20 scale-150 transition-all duration-1000 ${connected && !micMuted ? 'animate-ping opacity-50' : 'opacity-0'}`}></div>
-                    <div className={`absolute inset-0 rounded-full border-2 border-emerald-500/30 scale-110 transition-all duration-1000 ${connected && !micMuted ? 'animate-pulse' : 'opacity-0'}`}></div>
-                    
-                    <div className={`relative w-48 h-48 rounded-full flex items-center justify-center transition-all duration-500 shadow-2xl ${
-                        connected 
-                            ? (micMuted 
-                                ? 'bg-slate-800 border-4 border-red-500/30 shadow-[0_0_30px_rgba(239,68,68,0.1)]' 
-                                : 'bg-gradient-to-br from-emerald-600 to-teal-800 border-4 border-emerald-400/30 shadow-[0_0_60px_rgba(16,185,129,0.3)] scale-105') 
-                            : 'bg-slate-900 border-4 border-slate-800 shadow-inner group-hover:border-emerald-500/50'
-                    }`}>
-                        {connected ? (
-                            micMuted ? <MicOff className="w-16 h-16 text-red-400 transition-all" /> : <Activity className="w-20 h-20 text-white animate-pulse" />
-                        ) : (
-                            <Mic className="w-16 h-16 text-slate-600 group-hover:text-emerald-500 transition-colors" />
-                        )}
-                    </div>
+                <h2 className="text-4xl md:text-5xl font-black text-slate-900 dark:text-white tracking-tighter uppercase">Spiritual <span className="text-emerald-600">Voice</span>.</h2>
+                <div className="flex items-center justify-center gap-3">
+                    <p className={`text-sm font-bold uppercase tracking-widest ${connected ? 'text-emerald-500' : 'text-slate-400'}`}>{error || status}</p>
+                    {connected && <span className="bg-slate-100 dark:bg-slate-800 px-3 py-1 rounded-lg font-mono text-xs font-black text-slate-500">{formatDuration(duration)}</span>}
                 </div>
-
-                {connected && (
-                    <div className="w-full bg-slate-900/80 backdrop-blur-md p-6 rounded-[2rem] border border-slate-800 space-y-6 animate-fade-in-up shadow-2xl relative overflow-hidden">
-                        <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-emerald-500 to-teal-500 opacity-50"></div>
-                        
-                        <div className="flex items-center justify-center gap-6">
-                             <button 
-                                onClick={() => setMicMuted(!micMuted)}
-                                className={`p-4 rounded-xl transition-all ${micMuted ? 'bg-red-500/10 text-red-400 hover:bg-red-500/20' : 'bg-slate-800 text-white hover:bg-slate-700'}`}
-                                title={micMuted ? "Unmute" : "Mute"}
-                             >
-                                {micMuted ? <MicOff className="w-6 h-6" /> : <Mic className="w-6 h-6" />}
-                             </button>
-
-                             <button 
-                                onClick={interruptAudio}
-                                className="p-4 rounded-xl bg-amber-500/10 text-amber-400 hover:bg-amber-500/20 transition-all"
-                                title="Interrupt"
-                             >
-                                <PauseCircle className="w-6 h-6" />
-                             </button>
-                             
-                             <button 
-                                onClick={stopSession}
-                                className="px-6 py-4 bg-red-600/10 text-red-500 border border-red-500/20 rounded-xl font-bold hover:bg-red-600 hover:text-white transition-all flex items-center gap-2"
-                             >
-                                <XCircle className="w-5 h-5" /> End Session
-                             </button>
-                        </div>
-
-                        <div className="flex items-center gap-4 px-2">
-                            <div className="flex items-center gap-3 flex-1 bg-slate-950 p-3 rounded-xl border border-slate-800">
-                                <button onClick={() => setVolume(v => v === 0 ? 1 : 0)} className="text-emerald-500">
-                                    {volume === 0 ? <VolumeX className="w-4 h-4" /> : <Volume2 className="w-4 h-4" />}
-                                </button>
-                                <input 
-                                    type="range" min="0" max="1" step="0.1" value={volume} 
-                                    onChange={(e) => setVolume(parseFloat(e.target.value))}
-                                    className="flex-1 accent-emerald-500 h-1 bg-slate-700 rounded-lg appearance-none cursor-pointer"
-                                />
-                            </div>
-                            
-                            <div className="flex items-center gap-2 bg-slate-950 p-2 rounded-xl border border-slate-800">
-                                <Gauge className="w-4 h-4 text-emerald-500 ml-1" />
-                                <select 
-                                    value={playbackSpeed}
-                                    onChange={(e) => setPlaybackSpeed(parseFloat(e.target.value))}
-                                    className="bg-transparent text-xs font-bold text-slate-400 border-none focus:ring-0 cursor-pointer py-1 pr-6"
-                                >
-                                    {[0.75, 1, 1.25, 1.5].map(s => <option key={s} value={s}>{s}x</option>)}
-                                </select>
-                            </div>
-                        </div>
-                    </div>
-                )}
-
-                {!connected && (
-                    <button 
-                        onClick={startSession} 
-                        className="relative px-8 py-4 bg-emerald-600 text-white rounded-full font-bold text-lg hover:bg-emerald-500 hover:scale-105 transition-all shadow-lg shadow-emerald-900/50 flex items-center gap-2"
-                    >
-                        <Mic className="w-5 h-5" /> Start Consultation
-                    </button>
-                )}
-
-                {error && (
-                    <div className="mt-8 bg-red-900/20 border border-red-500/20 px-6 py-3 rounded-xl animate-fade-in-up">
-                        <p className="text-red-300 text-sm font-medium">{error}</p>
-                    </div>
-                )}
             </div>
+
+            <div className="relative w-full max-w-xl flex flex-col items-center">
+                <div className="h-40 w-full flex items-center justify-center gap-1.5 mb-12">
+                    {audioLevels.map((level, i) => (
+                        <div 
+                            key={i} 
+                            className={`w-2 rounded-full transition-all duration-100 ${connected ? (micMuted ? 'bg-slate-300 dark:bg-slate-700' : 'bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.5)]') : 'bg-slate-200 dark:bg-slate-800'}`}
+                            style={{ height: `${level}%` }}
+                        />
+                    ))}
+                </div>
+
+                <div className="relative group">
+                    {!connected && (
+                        <div className="absolute inset-0 bg-emerald-500/20 rounded-full blur-[60px] animate-pulse"></div>
+                    )}
+                    <button 
+                        onClick={connected ? () => setMicMuted(!micMuted) : startSession}
+                        className={`relative w-64 h-64 rounded-full flex flex-col items-center justify-center transition-all duration-700 group shadow-2xl ${
+                            connected 
+                            ? (micMuted ? 'bg-slate-100 dark:bg-slate-800 border-4 border-slate-200 dark:border-slate-700' : 'bg-emerald-600 border-4 border-emerald-500 scale-105') 
+                            : 'bg-white dark:bg-slate-900 border-4 border-slate-100 dark:border-slate-800 hover:scale-105 active:scale-95'
+                        }`}
+                    >
+                        {connected ? (
+                            micMuted ? <MicOff className="w-20 h-20 text-slate-400" /> : <Activity className="w-24 h-24 text-white animate-pulse" />
+                        ) : (
+                            <>
+                                <Mic className="w-20 h-20 text-emerald-600 dark:text-emerald-400 group-hover:scale-110 transition-transform" />
+                                <span className="absolute bottom-12 text-[10px] font-black uppercase tracking-[0.3em] text-emerald-600">Connect Now</span>
+                            </>
+                        )}
+                    </button>
+                </div>
+            </div>
+
+            {connected && (
+                <div className="w-full max-w-2xl flex justify-center animate-fade-in-up">
+                    <button onClick={stopSession} className="px-12 py-6 bg-red-600 text-white rounded-[2rem] font-black text-xs uppercase tracking-widest hover:bg-red-700 shadow-xl shadow-red-600/20 flex items-center gap-3 active:scale-95 transition-all"><XCircle className="w-5 h-5" /> End Dialogue</button>
+                </div>
+            )}
         </div>
     );
 };

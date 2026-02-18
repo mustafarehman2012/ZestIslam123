@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Moon, Sparkles, Loader2, AlertTriangle, BookOpen } from 'lucide-react';
+import { Moon, Sparkles, Loader2, BookOpen, Stars, Compass, Info, X, Zap } from 'lucide-react';
 import { interpretDream } from '../services/geminiService';
 import { DreamResult } from '../types';
 
@@ -14,101 +14,98 @@ const DreamInterpreter: React.FC = () => {
     const handleInterpret = async () => {
         if (!dream.trim()) return;
         setLoading(true);
-        setResult(null);
-        try {
-            const res = await interpretDream(dream);
-            setResult(res);
-        } catch (e) {
-            console.error("ZestIslam: Interpretation failed", e);
-        } finally {
-            setLoading(false);
-        }
+        const res = await interpretDream(dream);
+        if (res) setResult(res);
+        setLoading(false);
     };
 
     return (
-        <div className="max-w-2xl mx-auto space-y-6 pb-12">
-            <div className="text-center space-y-2 mb-8 pt-8">
-                <h2 className="text-3xl font-bold text-slate-800 dark:text-slate-100">Dream Interpretation</h2>
-                <p className="text-slate-500 dark:text-slate-400">Insights based on authentic Islamic traditions.</p>
-            </div>
-
-            <div className="bg-indigo-50 dark:bg-indigo-900/20 p-5 rounded-[2rem] border border-indigo-100 dark:border-indigo-800 flex gap-4 text-sm text-indigo-800 dark:text-indigo-200 items-start">
-                <AlertTriangle className="w-6 h-6 shrink-0 text-indigo-500" />
-                <p className="leading-relaxed">
-                    <strong>Important Disclaimer:</strong> This is an AI simulation referencing classical Islamic dream literature. 
-                    True dream interpretation requires a qualified scholar with divine insight. 
-                    Good dreams are from Allah, bad dreams are from Shaytan.
+        <div className="max-w-4xl mx-auto space-y-16 animate-fade-in pb-32 px-4">
+            <div className="text-center space-y-8 pt-10">
+                <div className="inline-flex items-center gap-3 px-8 py-3 glass-card rounded-full text-[10px] font-black uppercase tracking-[0.5em] text-indigo-600 dark:text-indigo-400">
+                    <Stars className="w-4 h-4" /> Celestial Sync
+                </div>
+                <h2 className="text-6xl md:text-8xl font-black text-slate-900 dark:text-white tracking-tighter leading-[0.9]">Dream <span className="bg-gradient-to-r from-indigo-500 to-purple-600 bg-clip-text text-transparent">Insight</span>.</h2>
+                <p className="text-slate-500 dark:text-slate-400 text-xl font-medium max-w-2xl mx-auto leading-relaxed">
+                  Decipher the symbols of your soul using classical Islamic dream scholarship.
                 </p>
             </div>
 
-            <div className="bg-white dark:bg-slate-900 p-8 rounded-[2.5rem] shadow-xl border border-emerald-50 dark:border-emerald-900/30">
-                <textarea
-                    value={dream}
-                    onChange={(e) => setDream(e.target.value)}
-                    placeholder="Describe your dream in as much detail as possible..."
-                    className="w-full p-6 rounded-[2rem] bg-slate-50 dark:bg-slate-800 border-none focus:ring-4 focus:ring-emerald-500/10 outline-none text-slate-700 dark:text-slate-200 resize-none h-48 mb-6 placeholder:text-slate-400 transition-all text-lg"
-                />
-                <button
-                    onClick={handleInterpret}
-                    disabled={loading || !dream}
-                    className="w-full bg-gradient-to-r from-indigo-600 to-indigo-800 hover:from-indigo-700 hover:to-indigo-900 text-white py-5 rounded-2xl font-bold text-lg transition-all flex items-center justify-center gap-3 shadow-lg shadow-indigo-200 dark:shadow-none disabled:opacity-50 transform active:scale-[0.99]"
-                >
-                    {loading ? <Loader2 className="w-6 h-6 animate-spin" /> : <Moon className="w-6 h-6" />}
-                    {loading ? 'Consulting Sources...' : 'Interpret Dream'}
-                </button>
+            <div className="bg-gradient-to-r from-indigo-900 to-purple-900 text-indigo-100 p-10 rounded-[3.5rem] border border-white/10 flex gap-8 items-start relative overflow-hidden shadow-2xl group">
+                <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full blur-[100px] animate-pulse"></div>
+                <div className="w-16 h-16 bg-white/10 rounded-[1.5rem] flex items-center justify-center shrink-0 border border-white/10"><Info className="w-8 h-8" /></div>
+                <p className="text-sm font-black leading-relaxed tracking-widest uppercase opacity-80">
+                    Dreams are a specialized science ('Ilm al-Ta'bir'). Use this as a reference point, but seek professional scholarly advice for critical life decisions.
+                </p>
+            </div>
+
+            <div className="glass-card p-12 md:p-20 rounded-[5rem] shadow-2xl relative overflow-hidden">
+                <div className="absolute bottom-[-10%] left-[-10%] w-[400px] h-[400px] bg-indigo-500/5 rounded-full blur-[120px]"></div>
+                <div className="relative z-10 space-y-12">
+                    <div className="flex items-center gap-6">
+                         <div className="w-16 h-16 bg-indigo-50 dark:bg-indigo-950 flex items-center justify-center rounded-[1.5rem] text-indigo-600 dark:text-indigo-400 shadow-inner">
+                            <Moon className="w-8 h-8" />
+                        </div>
+                        <div>
+                            <h4 className="font-black text-slate-900 dark:text-white uppercase tracking-[0.3em] text-sm">Vision Log</h4>
+                            <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">Describe symbols and emotions</p>
+                        </div>
+                    </div>
+                    <textarea
+                        value={dream}
+                        onChange={(e) => setDream(e.target.value)}
+                        placeholder="I saw a falcon landing on a white minaret..."
+                        className="w-full p-10 rounded-[3rem] bg-slate-50/50 dark:bg-slate-950/50 border-none focus:ring-8 focus:ring-indigo-500/5 outline-none text-slate-900 dark:text-white text-2xl font-black resize-none h-64 transition-all placeholder:text-slate-300 dark:placeholder:text-slate-600"
+                    />
+                    <button
+                        onClick={handleInterpret}
+                        disabled={loading || !dream.trim()}
+                        className="w-full bg-[#1e1b4b] dark:bg-indigo-600 hover:scale-[1.02] text-white py-8 rounded-[3rem] font-black text-xs uppercase tracking-[0.4em] transition-all flex items-center justify-center gap-6 shadow-[0_30px_60px_-15px_rgba(79,70,229,0.4)] active:scale-95 disabled:opacity-50"
+                    >
+                        {loading ? <Loader2 className="w-6 h-6 animate-spin" /> : <Compass className="w-6 h-6" />}
+                        {loading ? 'Consulting Sources...' : 'Decode Vision'}
+                    </button>
+                </div>
             </div>
 
             {result && (
-                <div className="bg-white dark:bg-slate-900 rounded-[3rem] overflow-hidden shadow-2xl border border-indigo-100 dark:border-indigo-900 animate-fade-in-up">
-                    <div className="p-8 space-y-8">
-                        
-                        {/* Language Selector */}
-                        <div className="bg-slate-100 dark:bg-slate-800 p-1.5 rounded-2xl flex max-w-sm mx-auto shadow-inner">
-                            {(['english', 'urdu', 'hinglish'] as Language[]).map((l) => (
-                                <button
-                                    key={l}
-                                    onClick={() => setLang(l)}
-                                    className={`flex-1 py-2.5 rounded-xl text-xs font-bold uppercase tracking-wider transition-all duration-300 ${
-                                        lang === l 
-                                        ? 'bg-white dark:bg-slate-700 text-indigo-600 dark:text-indigo-400 shadow-md' 
-                                        : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-300'
-                                    }`}
-                                >
-                                    {l}
-                                </button>
-                            ))}
+                <div className="bg-white dark:bg-[#020617] text-slate-900 dark:text-white rounded-[5rem] overflow-hidden shadow-2xl animate-fade-in-up border border-slate-100 dark:border-white/5">
+                    <div className="absolute top-0 left-0 w-full h-3 bg-gradient-to-r from-indigo-600 via-purple-500 to-teal-400"></div>
+                    <div className="p-16 md:p-24 space-y-16 relative">
+                        <div className="flex flex-col md:flex-row justify-between items-center gap-10">
+                            <div className="bg-slate-100 dark:bg-white/5 p-2 rounded-[1.5rem] flex border border-slate-200 dark:border-white/10 inline-flex">
+                                {(['english', 'urdu', 'hinglish'] as Language[]).map((l) => (
+                                    <button key={l} onClick={() => setLang(l)} className={`px-10 py-4 rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] transition-all ${lang === l ? 'bg-indigo-600 text-white shadow-lg' : 'text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'}`}>{l}</button>
+                                ))}
+                            </div>
                         </div>
 
-                        <div className={`prose prose-lg dark:prose-invert text-slate-700 dark:text-slate-300 ${lang === 'urdu' ? 'text-right' : ''}`} dir={lang === 'urdu' ? 'rtl' : 'ltr'}>
-                            <p className={`leading-relaxed ${lang === 'urdu' ? 'font-arabic text-2xl leading-loose' : 'font-serif italic'}`}>
-                                {result[lang]?.interpretation || 'Interpretation details are being processed...'}
-                            </p>
-                        </div>
+                        <div className={`space-y-16 ${lang === 'urdu' ? 'text-right' : ''}`} dir={lang === 'urdu' ? 'rtl' : 'ltr'}>
+                            <div className="space-y-8">
+                                <h3 className="text-[10px] font-black text-indigo-600 dark:text-indigo-400 uppercase tracking-[0.5em]">The Core Interpretation</h3>
+                                <p className={`text-4xl md:text-5xl font-black leading-[1.3] tracking-tighter ${lang === 'urdu' ? 'font-quran' : ''}`}>
+                                    {result[lang].interpretation}
+                                </p>
+                            </div>
 
-                        {result[lang]?.symbols && result[lang].symbols.length > 0 && (
-                            <div className={lang === 'urdu' ? 'text-right' : ''} dir={lang === 'urdu' ? 'rtl' : 'ltr'}>
-                                <h4 className="text-xs font-bold text-slate-400 uppercase tracking-[0.2em] mb-4">
-                                    {lang === 'urdu' ? 'علامات' : 'Identified Symbols'}
-                                </h4>
-                                <div className={`flex flex-wrap gap-2 ${lang === 'urdu' ? 'justify-end' : ''}`}>
-                                    {result[lang].symbols.map((s, i) => (
-                                        <span key={i} className="px-5 py-2 bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-300 rounded-full text-sm font-bold border border-slate-100 dark:border-slate-700">
-                                            {s}
-                                        </span>
-                                    ))}
+                            <div className="grid md:grid-cols-2 gap-10">
+                                <div className="p-12 bg-slate-50 dark:bg-white/5 rounded-[4rem] border border-slate-100 dark:border-white/10">
+                                    <h3 className="text-[10px] font-black text-indigo-600 dark:text-indigo-400 uppercase tracking-[0.5em] mb-8">Symbols Detected</h3>
+                                    <div className={`flex flex-wrap gap-4 ${lang === 'urdu' ? 'justify-end' : ''}`}>
+                                        {result[lang].symbols.map((s, i) => (
+                                            <span key={i} className="px-8 py-4 bg-white dark:bg-white/10 rounded-[1.5rem] text-[10px] font-black uppercase tracking-widest border border-slate-200 dark:border-white/5 group hover:border-indigo-400 transition-all">
+                                                {s}
+                                            </span>
+                                        ))}
+                                    </div>
+                                </div>
+                                <div className="p-12 bg-indigo-50 dark:bg-gradient-to-br dark:from-indigo-600/20 dark:to-purple-600/20 rounded-[4rem] border border-indigo-100 dark:border-indigo-500/20">
+                                    <h3 className="text-[10px] font-black text-indigo-600 dark:text-indigo-400 uppercase tracking-[0.5em] mb-8">Scholarly Council</h3>
+                                    <p className={`text-2xl font-bold leading-relaxed italic ${lang === 'urdu' ? 'font-quran text-3xl' : ''}`}>
+                                        "{result[lang].advice}"
+                                    </p>
                                 </div>
                             </div>
-                        )}
-
-                        <div className={`bg-emerald-50 dark:bg-emerald-900/20 p-8 rounded-[2.5rem] border border-emerald-100 dark:border-emerald-800 relative overflow-hidden ${lang === 'urdu' ? 'text-right' : ''}`} dir={lang === 'urdu' ? 'rtl' : 'ltr'}>
-                            <div className="absolute top-0 left-0 w-1 h-full bg-emerald-500/50"></div>
-                            <h4 className={`text-sm font-bold text-emerald-800 dark:text-emerald-400 mb-3 flex items-center gap-2 uppercase tracking-widest ${lang === 'urdu' ? 'flex-row-reverse' : ''}`}>
-                                <BookOpen className="w-4 h-4" /> 
-                                {lang === 'urdu' ? 'روحانی نصیحت' : 'Spiritual Advice'}
-                            </h4>
-                            <p className={`text-lg text-emerald-900 dark:text-emerald-100 font-medium ${lang === 'urdu' ? 'font-arabic text-2xl' : ''}`}>
-                                {result[lang]?.advice || 'Have patience and seek refuge in Allah (SWT).'}
-                            </p>
                         </div>
                     </div>
                 </div>
