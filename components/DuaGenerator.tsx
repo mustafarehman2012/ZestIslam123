@@ -47,7 +47,7 @@ const DuaGenerator: React.FC = () => {
                 value={situation}
                 onChange={(e) => setSituation(e.target.value)}
                 placeholder="Share what is on your heart..."
-                className="w-full p-8 rounded-[2rem] bg-slate-50/50 dark:bg-slate-950/50 border-none focus:ring-4 focus:ring-emerald-500/10 outline-none text-xl font-black resize-none h-48 transition-all placeholder:text-slate-300 dark:placeholder:text-slate-600 text-slate-900 dark:text-white"
+                className="w-full p-8 rounded-[2rem] bg-slate-50/50 dark:bg-slate-950/50 border-none focus:ring-4 focus:ring-emerald-500/10 outline-none text-xl font-black text-slate-900 dark:text-white resize-none h-48 transition-all placeholder:text-slate-400 dark:placeholder:text-slate-600"
             />
             <button
                 onClick={handleGenerate}
@@ -61,20 +61,20 @@ const DuaGenerator: React.FC = () => {
       </div>
 
       {dua && (
-        <div className="relative bg-white dark:bg-slate-900 rounded-[3rem] overflow-hidden shadow-2xl animate-fade-in-up border border-slate-100 dark:border-white/5">
+        <div className="relative bg-slate-950 dark:bg-slate-900 rounded-[3rem] overflow-hidden shadow-2xl animate-fade-in-up border border-white/5">
             <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-emerald-500 via-teal-400 to-indigo-600"></div>
             <div className="relative z-10 p-12 space-y-12">
                 <div className="flex flex-col md:flex-row justify-between items-center gap-8">
-                    <div className="text-center md:text-left"><h3 className="text-[9px] font-black text-emerald-600 dark:text-emerald-400 uppercase tracking-[0.5em] mb-2">Invocation</h3><h4 className="text-3xl font-black text-slate-900 dark:text-white tracking-tighter">{dua.title}</h4></div>
+                    <div className="text-center md:text-left"><h3 className="text-[9px] font-black text-emerald-400 uppercase tracking-[0.5em] mb-2">Invocation</h3><h4 className="text-3xl font-black text-white tracking-tighter">{dua.title}</h4></div>
                     <div className="flex gap-3">
-                        <button onClick={copyToClipboard} className="p-5 bg-slate-50 dark:bg-white/5 hover:bg-emerald-50 dark:hover:bg-white/10 text-slate-900 dark:text-white rounded-2xl transition-all border border-slate-100 dark:border-white/10 group">{copied ? <Check className="w-5 h-5 text-emerald-600" /> : <Copy className="w-5 h-5 text-slate-400 group-hover:text-emerald-600" />}</button>
-                        <button className="p-5 bg-slate-50 dark:bg-white/5 hover:bg-emerald-50 dark:hover:bg-white/10 text-slate-900 dark:text-white rounded-2xl transition-all border border-slate-100 dark:border-white/10 group"><Share2 className="w-5 h-5 text-slate-400 group-hover:text-emerald-600" /></button>
+                        <button onClick={copyToClipboard} className="p-5 bg-white/5 hover:bg-white/10 text-white rounded-2xl transition-all border border-white/10 group">{copied ? <Check className="w-5 h-5 text-emerald-400" /> : <Copy className="w-5 h-5 text-slate-400 group-hover:text-white" />}</button>
+                        <button className="p-5 bg-white/5 hover:bg-white/10 text-white rounded-2xl transition-all border border-white/10 group"><Share2 className="w-5 h-5 text-slate-400 group-hover:text-white" /></button>
                     </div>
                 </div>
-                <div className="py-12 px-8 bg-slate-50 dark:bg-white/5 rounded-[2.5rem] border border-slate-100 dark:border-white/5 backdrop-blur-2xl text-center"><p className="font-quran text-5xl md:text-6xl text-slate-900 dark:text-white leading-relaxed">{dua.arabic}</p></div>
+                <div className="py-12 px-8 bg-white/5 rounded-[2.5rem] border border-white/5 backdrop-blur-2xl text-center"><p className="font-quran text-3xl md:text-5xl lg:text-6xl text-white leading-relaxed">{dua.arabic}</p></div>
                 <div className="grid md:grid-cols-2 gap-8">
-                    <div className="p-8 bg-slate-50 dark:bg-white/5 rounded-[2rem] border border-slate-100 dark:border-white/5"><p className="text-[9px] font-black text-emerald-600 dark:text-emerald-400 uppercase tracking-widest mb-4">Translation</p><p className="text-slate-600 dark:text-slate-300 italic text-xl font-serif leading-relaxed">{dua.transliteration}</p></div>
-                    <div className="p-8 bg-emerald-50 dark:bg-emerald-600/10 rounded-[2rem] border border-emerald-100 dark:border-emerald-500/20"><p className="text-[9px] font-black text-emerald-600 dark:text-emerald-400 uppercase tracking-widest mb-4">Meaning</p><p className="text-slate-900 dark:text-white text-xl font-black leading-tight tracking-tight">{dua.translation}</p></div>
+                    <div className="p-8 bg-white/5 rounded-[2rem] border border-white/5"><p className="text-[9px] font-black text-emerald-400 uppercase tracking-widest mb-4">Translation</p><p className="text-slate-300 italic text-xl font-serif leading-relaxed">{dua.transliteration}</p></div>
+                    <div className="p-8 bg-emerald-600/10 rounded-[2rem] border border-emerald-500/20"><p className="text-[9px] font-black text-emerald-400 uppercase tracking-widest mb-4">Meaning</p><p className="text-white text-xl font-black leading-tight tracking-tight">{dua.translation}</p></div>
                 </div>
             </div>
         </div>

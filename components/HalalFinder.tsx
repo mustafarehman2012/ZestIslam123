@@ -12,7 +12,7 @@ const HalalFinder: React.FC = () => {
 
     const reverseGeocode = async (lat: number, lng: number) => {
         try {
-            const response = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=12`, { headers: { 'Accept-Language': 'en' } });
+            const response = await globalThis.fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=12`, { headers: { 'Accept-Language': 'en' } });
             const data = await response.json();
             setAddressName(data?.address?.city || data?.address?.town || 'Current Loc');
         } catch (e) { setAddressName('Current Loc'); }
@@ -41,7 +41,7 @@ const HalalFinder: React.FC = () => {
     };
 
     return (
-        <div className="max-w-6xl mx-auto space-y-12 pb-32 animate-fade-in">
+        <div className="max-w-6xl mx-auto space-y-12 pb-32 animate-fade-in px-4 md:px-0">
             <div className="text-center space-y-8">
                 <div className="inline-flex items-center gap-3 px-8 py-3 glass-card rounded-full text-[10px] font-black uppercase tracking-[0.5em] text-emerald-600 dark:text-emerald-400">
                     <MapPin className="w-4 h-4 fill-current" /> Geodata Sync
@@ -50,29 +50,43 @@ const HalalFinder: React.FC = () => {
                 <div className="flex justify-center">
                     <div className="glass-card px-6 py-3 rounded-full flex items-center gap-4 border-none shadow-xl">
                         <div className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse"></div>
-                        <span className="font-black uppercase tracking-widest text-[10px] text-slate-400">{addressName}</span>
+                        {/* Updated text color for dark mode visibility */}
+                        <span className="font-black uppercase tracking-widest text-[10px] text-slate-600 dark:text-slate-300">{addressName}</span>
                     </div>
                 </div>
             </div>
 
-            <div className="glass-card p-4 rounded-[4rem] flex flex-col md:flex-row gap-4 max-w-3xl mx-auto border-none shadow-2xl">
-                <select value={query} onChange={(e) => setQuery(e.target.value)} className="flex-1 p-6 rounded-[2.5rem] bg-slate-50 dark:bg-slate-950 border-none font-black uppercase tracking-tight text-lg cursor-pointer">
-                    <option value="Halal Restaurants">Fine Dining</option>
-                    <option value="Halal Hotels">Hotels</option>
-                    <option value="Masjids">Masjids</option>
-                    <option value="Halal Meat Shops">Meat Supply</option>
+            <div className="glass-card p-4 rounded-[3rem] md:rounded-[4rem] flex flex-col md:flex-row gap-4 max-w-3xl mx-auto border-none shadow-2xl">
+                {/* Added dark:text-white to select for dark mode visibility */}
+                <select 
+                    value={query} 
+                    onChange={(e) => setQuery(e.target.value)} 
+                    className="flex-1 p-6 rounded-[2.5rem] bg-slate-50 dark:bg-slate-950 border-none font-black uppercase tracking-tight text-lg cursor-pointer text-slate-900 dark:text-white focus:ring-2 focus:ring-emerald-500 transition-all"
+                >
+                    <option value="Halal Restaurants" className="dark:bg-slate-900">Fine Dining</option>
+                    <option value="Halal Hotels" className="dark:bg-slate-900">Hotels</option>
+                    <option value="Masjids" className="dark:bg-slate-900">Masjids</option>
+                    <option value="Halal Meat Shops" className="dark:bg-slate-900">Meat Supply</option>
                 </select>
                 <button onClick={handlePlacesSearch} disabled={placesLoading || !location} className="px-12 py-6 bg-slate-900 dark:bg-emerald-600 text-white rounded-[2.5rem] font-black uppercase tracking-[0.3em] text-xs shadow-xl active:scale-95 transition-all">
                     {placesLoading ? <Loader2 className="animate-spin w-6 h-6 mx-auto" /> : 'Scan Grid'}
                 </button>
             </div>
 
+            {error && (
+                <div className="text-center animate-fade-in">
+                    <p className="text-red-500 font-black uppercase tracking-widest text-xs flex items-center justify-center gap-2">
+                        <AlertCircle className="w-4 h-4" /> {error}
+                    </p>
+                </div>
+            )}
+
             <div className="grid gap-8 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
                 {places.map((place, i) => (
                     <div key={i} className="glass-card p-10 rounded-[3.5rem] border-none shadow-lg hover:scale-[1.05] transition-all group animate-fade-in-up" style={{ animationDelay: `${i * 0.05}s` }}>
                         <div className="flex justify-between items-start mb-10">
                             <div className="w-16 h-16 bg-slate-50 dark:bg-slate-950 rounded-[1.5rem] flex items-center justify-center text-emerald-600 group-hover:rotate-12 transition-transform shadow-inner"><Utensils className="w-8 h-8" /></div>
-                            <span className="text-[9px] font-black bg-emerald-50 text-emerald-600 dark:bg-emerald-950 px-3 py-1 rounded-full uppercase tracking-widest">Verified</span>
+                            <span className="text-[9px] font-black bg-emerald-50 text-emerald-600 dark:bg-emerald-950 dark:text-emerald-400 px-3 py-1 rounded-full uppercase tracking-widest">Verified</span>
                         </div>
                         <h3 className="text-2xl font-black text-slate-900 dark:text-white uppercase tracking-tighter mb-8 leading-none truncate">{place.title}</h3>
                         <a href={place.uri} target="_blank" rel="noopener noreferrer" className="w-full flex items-center justify-center gap-3 py-5 bg-slate-900 dark:bg-emerald-600 text-white rounded-3xl font-black uppercase tracking-[0.3em] text-[10px] shadow-2xl hover:bg-emerald-700 active:scale-95 transition-all">

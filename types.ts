@@ -1,5 +1,3 @@
-
-
 export interface Message {
   id: string;
   role: 'user' | 'model';
@@ -49,7 +47,6 @@ export interface UserProfile {
   joinedDate: Date;
 }
 
-// Added GeneratedDua interface to resolve export errors in service and components
 export interface GeneratedDua {
   title: string;
   arabic: string;
@@ -71,9 +68,9 @@ export enum AppView {
   NAMES = 'NAMES',
   DREAM = 'DREAM',
   QUIZ = 'QUIZ',
+
   MEDIA = 'MEDIA',
   THUMBNAIL = 'THUMBNAIL',
-  RAMADAN = 'RAMADAN',
   ABOUT = 'ABOUT',
   CONTACT = 'CONTACT',
   LOGIN = 'LOGIN',
@@ -141,13 +138,4 @@ export interface FullSurahVerse {
     text: string;
     translation: string;
     numberInSurah: number;
-}
-
-// Ramadan Specific
-export interface RamadanDailyContent {
-  day: number;
-  reflection: string;
-  hadith: string;
-  mission: string;
-  journalPrompt: string;
 }

@@ -17,7 +17,7 @@ const QuranSearch: React.FC = () => {
   const [allSurahs, setAllSurahs] = useState<SurahMeta[]>([]);
   const [matchedSurah, setMatchedSurah] = useState<SurahMeta | null>(null);
   const [readingSurah, setReadingSurah] = useState<{ meta: SurahMeta, verses: FullSurahVerse[] } | null>(null);
-  const [readerLoading, setReaderLoading] = useState(false);
+  const [readerLoading, setReaderLoading] = useState<number | null>(null);
 
   const [audioPlaylist, setAudioPlaylist] = useState<string[]>([]);
   const [currentTrackIndex, setCurrentTrackIndex] = useState(-1);
@@ -121,6 +121,7 @@ const QuranSearch: React.FC = () => {
     if (!query.trim()) return;
     setLoading(true);
     setSearched(true);
+    setResults([]);
     setExpandedTadabbur(null);
     const data = await searchQuranByType(query);
     setResults(data);
@@ -159,13 +160,18 @@ const QuranSearch: React.FC = () => {
   };
 
   const openFullSurah = async (surahNumber: number) => {
-      setReaderLoading(true);
-      const data = await fetchFullSurah(surahNumber);
-      if (data) {
-          setReadingSurah(data);
-          window.scrollTo({ top: 0, behavior: 'smooth' });
+      setReaderLoading(surahNumber);
+      try {
+        const data = await fetchFullSurah(surahNumber);
+        if (data) {
+            setReadingSurah(data);
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+      } catch (e) {
+        console.error("Failed to load surah", e);
+      } finally {
+        setReaderLoading(null);
       }
-      setReaderLoading(false);
   };
 
   if (readingSurah) {
@@ -205,7 +211,7 @@ const QuranSearch: React.FC = () => {
               </div>
 
               <div className="text-center py-12">
-                  <p className="font-quran text-5xl md:text-6xl text-slate-800 dark:text-emerald-400 opacity-90 drop-shadow-sm select-none">
+                  <p className="font-quran text-3xl md:text-5xl lg:text-6xl text-slate-800 dark:text-emerald-400 opacity-90 drop-shadow-sm select-none">
                       بِسْمِ ٱللَّهِ ٱلرَّحْمَٰنِ ٱلرَّحِيمِ
                   </p>
               </div>
@@ -231,7 +237,7 @@ const QuranSearch: React.FC = () => {
                               </button>
                           </div>
                           
-                          <p className="text-right font-quran text-4xl md:text-5xl lg:text-6xl text-slate-800 dark:text-white mb-10 leading-[2.8] md:leading-[2.8]" dir="rtl">
+                          <p className="text-right font-quran text-2xl md:text-4xl lg:text-5xl text-slate-800 dark:text-white mb-10 leading-[2.8] md:leading-[2.8]" dir="rtl">
                               {verse.text}
                           </p>
                           <div className="max-w-3xl">
@@ -284,15 +290,15 @@ const QuranSearch: React.FC = () => {
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           placeholder="E.g., 'Patience', 'Surah Kahf', 'How to be grateful?'"
-          className="w-full pl-10 pr-40 py-6 rounded-[2.5rem] bg-white dark:bg-slate-900 border-none shadow-2xl shadow-slate-200/50 dark:shadow-none focus:ring-4 focus:ring-emerald-500/10 outline-none transition-all text-xl text-slate-800 dark:text-slate-200 placeholder:text-slate-400 font-medium"
+          className="w-full pl-6 sm:pl-10 pr-[100px] sm:pr-40 py-4 sm:py-6 rounded-[2rem] sm:rounded-[2.5rem] bg-white dark:bg-slate-900 border-none shadow-2xl shadow-slate-200/50 dark:shadow-none focus:ring-4 focus:ring-emerald-500/10 outline-none transition-all text-base sm:text-xl text-slate-800 dark:text-slate-200 placeholder:text-slate-400 font-medium"
         />
-        <div className="absolute inset-y-3 right-3 hidden sm:block">
+        <div className="absolute inset-y-2 right-6 sm:inset-y-3 sm:right-3 flex">
             <button 
                 type="submit"
                 disabled={loading || !query}
-                className="h-full bg-emerald-600 hover:bg-emerald-700 text-white px-10 rounded-[1.8rem] font-black uppercase tracking-widest text-xs transition-all disabled:opacity-50 flex items-center gap-3 shadow-xl shadow-emerald-600/20 active:scale-95"
+                className="h-full bg-emerald-600 hover:bg-emerald-700 text-white px-4 sm:px-10 rounded-[1.5rem] sm:rounded-[1.8rem] font-black uppercase tracking-widest text-[10px] sm:text-xs transition-all disabled:opacity-50 flex items-center gap-2 sm:gap-3 shadow-xl shadow-emerald-600/20 active:scale-95"
             >
-                {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Search className="w-4 h-4" />}
+                {loading ? <Loader2 className="w-3 h-3 sm:w-4 sm:h-4 animate-spin" /> : <Search className="w-3 h-3 sm:w-4 sm:h-4" />}
                 Scan
             </button>
         </div>
@@ -314,14 +320,29 @@ const QuranSearch: React.FC = () => {
                       </div>
                   </div>
                   <div className="w-14 h-14 bg-slate-50 dark:bg-slate-800 text-slate-400 dark:text-slate-500 rounded-full flex items-center justify-center group-hover:bg-emerald-600 group-hover:text-white transition-all shadow-inner">
-                      {readerLoading ? <Loader2 className="w-6 h-6 animate-spin" /> : <ChevronRight className="w-6 h-6" />}
+                      {readerLoading === matchedSurah.number ? <Loader2 className="w-6 h-6 animate-spin" /> : <ChevronRight className="w-6 h-6" />}
                   </div>
               </div>
           </div>
       )}
 
       <div className="space-y-8 px-4 sm:px-0">
-        {results.map((verse, idx) => (
+        {loading && (
+            <div className="flex flex-col items-center justify-center py-20 space-y-4">
+                <Loader2 className="w-12 h-12 animate-spin text-emerald-500" />
+                <p className="text-sm font-black text-slate-400 uppercase tracking-widest">Scanning Verses...</p>
+            </div>
+        )}
+
+        {!loading && searched && results.length === 0 && !matchedSurah && (
+            <div className="text-center py-20 space-y-4 bg-white dark:bg-slate-900 rounded-[3rem] border border-slate-100 dark:border-slate-800 shadow-sm animate-fade-in-up">
+                <Search className="w-12 h-12 text-slate-300 dark:text-slate-600 mx-auto" />
+                <h3 className="text-xl font-black text-slate-900 dark:text-white uppercase tracking-tighter">Unable to find</h3>
+                <p className="text-slate-500 dark:text-slate-400 text-sm font-medium">We couldn't find any verses matching your query. Try different keywords.</p>
+            </div>
+        )}
+
+        {!loading && results.map((verse, idx) => (
           <div key={idx} className="bg-white dark:bg-slate-900 p-8 md:p-12 rounded-[4rem] border border-slate-100 dark:border-slate-800 shadow-sm hover:shadow-2xl transition-all duration-500 relative group overflow-hidden animate-fade-in-up">
               <div className="absolute top-0 right-0 p-8 opacity-5 group-hover:opacity-10 transition-opacity">
                   <BookOpen className="w-24 h-24 text-emerald-600" />
@@ -332,14 +353,22 @@ const QuranSearch: React.FC = () => {
                       {verse.surahName} • Verse {verse.verseNumber}
                   </span>
                   <div className="flex gap-3">
-                      <button onClick={() => playAudio(verse.arabicText)} className="p-4 bg-slate-50 dark:bg-slate-800 text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 rounded-2xl transition-all border border-slate-100 dark:border-slate-700" title="Audio"><Volume2 className="w-5 h-5" /></button>
+                      {playingAudioId === verse.arabicText ? (
+                          <button onClick={() => { stopGeneratedAudio(); setPlayingAudioId(null); }} className="p-4 bg-red-50 dark:bg-red-900/20 text-red-500 hover:bg-red-100 dark:hover:bg-red-900/40 rounded-2xl transition-all border border-red-100 dark:border-red-800" title="Stop Audio">
+                              <Square className="w-5 h-5 fill-current animate-pulse" />
+                          </button>
+                      ) : (
+                          <button onClick={() => playAudio(verse.arabicText)} className="p-4 bg-slate-50 dark:bg-slate-800 text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 rounded-2xl transition-all border border-slate-100 dark:border-slate-700" title="Play Audio">
+                              <Volume2 className="w-5 h-5" />
+                          </button>
+                      )}
                       <button onClick={() => copyText(`${verse.arabicText}\n\n${verse.translation}\n(${verse.surahName}:${verse.verseNumber})`)} className="p-4 bg-slate-50 dark:bg-slate-800 text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 rounded-2xl transition-all border border-slate-100 dark:border-slate-700" title="Copy"><Copy className="w-5 h-5" /></button>
                   </div>
               </div>
               
               <div className="bg-slate-50/50 dark:bg-slate-800/30 rounded-[3rem] p-8 md:p-12 mb-10 border border-slate-50 dark:border-slate-800 relative overflow-hidden">
                   <div className="absolute top-0 left-0 w-full h-full bg-[url('https://www.transparenttextures.com/patterns/arabesque.png')] opacity-[0.03] pointer-events-none"></div>
-                  <p className="text-right font-quran text-4xl md:text-5xl lg:text-6xl text-slate-800 dark:text-white leading-[2.5]" dir="rtl">
+                  <p className="text-right font-quran text-2xl md:text-4xl lg:text-5xl text-slate-800 dark:text-white leading-[2.5]" dir="rtl">
                     {verse.arabicText}
                   </p>
               </div>
@@ -361,21 +390,21 @@ const QuranSearch: React.FC = () => {
 
               {expandedTadabbur?.idx === idx && (
                   <div className="mt-8 bg-emerald-50/50 dark:bg-emerald-900/10 p-8 rounded-[3rem] border border-emerald-100 dark:border-emerald-800/50 animate-fade-in-up">
-                      <div className="flex gap-2 mb-8 bg-white dark:bg-slate-900 p-1.5 rounded-2xl inline-flex shadow-sm">
+                      <div className="flex flex-wrap sm:inline-flex gap-1 sm:gap-2 mb-8 bg-white dark:bg-slate-900 p-1.5 rounded-2xl shadow-sm">
                           {['english', 'urdu', 'hinglish'].map(l => (
-                              <button key={l} onClick={() => setExpandedTadabbur(prev => prev ? {...prev, lang: l as any} : null)} className={`text-[10px] font-black uppercase tracking-widest px-5 py-2 rounded-xl transition-all ${expandedTadabbur.lang === l ? 'bg-emerald-600 text-white' : 'text-slate-400 hover:text-slate-600'}`}>
+                              <button key={l} onClick={() => setExpandedTadabbur(prev => prev ? {...prev, lang: l as any} : null)} className={`text-[10px] font-black uppercase tracking-widest px-3 sm:px-5 py-2 rounded-xl transition-all ${expandedTadabbur.lang === l ? 'bg-emerald-600 text-white' : 'text-slate-400 hover:text-slate-600'}`}>
                                   {l}
                               </button>
                           ))}
                       </div>
-                      <p className={`text-slate-800 dark:text-slate-200 text-xl md:text-2xl font-medium mb-8 leading-relaxed ${expandedTadabbur.lang === 'urdu' ? 'text-right font-quran' : ''}`}>
+                      <p className={`text-slate-800 dark:text-slate-200 text-xl md:text-2xl font-medium mb-8 leading-relaxed ${expandedTadabbur.lang === 'urdu' ? 'text-right font-quran text-lg sm:text-xl md:text-2xl' : ''}`}>
                           {expandedTadabbur.data[expandedTadabbur.lang].paragraph}
                       </p>
                       <div className="grid md:grid-cols-2 gap-4">
                           {expandedTadabbur.data[expandedTadabbur.lang].points.map((p, i) => (
                               <div key={i} className={`p-5 bg-white dark:bg-slate-900 rounded-[2rem] border border-slate-100 dark:border-slate-800 flex items-start gap-4 ${expandedTadabbur.lang === 'urdu' ? 'flex-row-reverse text-right' : ''}`}>
                                   <div className="w-8 h-8 bg-emerald-100 dark:bg-emerald-900 text-emerald-600 dark:text-emerald-400 rounded-full flex items-center justify-center shrink-0 font-black text-xs">{i+1}</div>
-                                  <p className={`text-slate-600 dark:text-slate-400 font-medium ${expandedTadabbur.lang === 'urdu' ? 'font-quran text-lg' : 'text-sm'}`}>{p}</p>
+                                  <p className={`text-slate-600 dark:text-slate-400 font-medium ${expandedTadabbur.lang === 'urdu' ? 'font-quran text-lg sm:text-xl' : 'text-sm'}`}>{p}</p>
                               </div>
                           ))}
                       </div>
@@ -384,7 +413,7 @@ const QuranSearch: React.FC = () => {
           </div>
         ))}
 
-        {!searched && results.length === 0 && (
+        {!searched && results.length === 0 && !loading && (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                 {allSurahs.slice(0, 114).map(surah => (
                     <button 
@@ -394,7 +423,7 @@ const QuranSearch: React.FC = () => {
                     >
                         <div className="flex items-center justify-between mb-4">
                             <span className="w-10 h-10 bg-slate-50 dark:bg-slate-800 rounded-2xl flex items-center justify-center text-xs font-black text-slate-400 group-hover:bg-emerald-100 dark:group-hover:bg-emerald-900 group-hover:text-emerald-600 transition-all">
-                                {surah.number}
+                                {readerLoading === surah.number ? <Loader2 className="w-5 h-5 animate-spin" /> : surah.number}
                             </span>
                             <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{surah.revelationType}</span>
                         </div>

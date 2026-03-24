@@ -1,4 +1,3 @@
-
 import React, { useState, useMemo } from 'react';
 import { Loader2, Sparkles, X, ChevronRight, Search, Volume2, Globe, Heart, BookOpen, Lightbulb, Zap } from 'lucide-react';
 import { getNameInsight, playGeneratedAudio } from '../services/geminiService';
@@ -78,6 +77,7 @@ const ALL_NAMES = [
     { ar: "الْمُقْتَدِر", en: "Al-Muqtadir", tr: "The Powerful", color: "from-indigo-600 to-indigo-800" },
     { ar: "الْمُقَدِّم", en: "Al-Muqaddim", tr: "The Expediter", color: "from-amber-500 to-amber-700" },
     { ar: "الْمُؤَخِّر", en: "Al-Mu'akhkhir", tr: "The Delayer", color: "from-rose-500 to-rose-700" },
+    { ar: "الْأَحَد", en: "Al-Ahad", tr: "The One", color: "from-emerald-600 to-teal-600" },
     { ar: "الْأَوَّل", en: "Al-Awwal", tr: "The First", color: "from-emerald-400 to-emerald-600" },
     { ar: "الْآخِر", en: "Al-Akhir", tr: "The Last", color: "from-slate-700 to-slate-900" },
     { ar: "الظَّاهِر", en: "Az-Zahir", tr: "The Manifest", color: "from-sky-400 to-sky-600" },
@@ -190,7 +190,7 @@ const NamesOfAllah: React.FC = () => {
                         
                         <div className={`bg-gradient-to-br ${selectedName.color} p-12 sm:p-20 text-center text-white shrink-0 relative overflow-hidden`}>
                             <div className="absolute top-0 left-0 w-full h-full bg-[url('https://www.transparenttextures.com/patterns/arabesque.png')] opacity-10"></div>
-                            <h3 className="font-quran text-7xl sm:text-9xl mb-8 animate-float drop-shadow-2xl relative z-10">{selectedName.ar}</h3>
+                            <h3 className="font-quran text-5xl sm:text-7xl md:text-9xl mb-8 animate-float drop-shadow-2xl relative z-10">{selectedName.ar}</h3>
                             <h4 className="text-4xl sm:text-5xl font-black uppercase tracking-tighter relative z-10">{selectedName.en}</h4>
                             <div className="w-12 h-1.5 bg-white/30 mx-auto my-6 rounded-full"></div>
                             <p className="opacity-80 font-black tracking-[0.4em] uppercase text-[10px] sm:text-xs relative z-10">{selectedName.tr}</p>
@@ -223,32 +223,32 @@ const NamesOfAllah: React.FC = () => {
                             ) : insight ? (
                                 <div className="space-y-10 animate-fade-in-up">
                                     <div className="flex justify-center">
-                                        <div className="flex gap-2 bg-white dark:bg-slate-900 p-2 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-800">
+                                        <div className="flex flex-wrap sm:flex-nowrap justify-center gap-1 sm:gap-2 bg-white dark:bg-slate-900 p-1.5 sm:p-2 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-800">
                                             {(['english', 'urdu', 'hinglish'] as Language[]).map(l => (
-                                                <button key={l} onClick={() => setLang(l)} className={`px-8 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${lang === l ? `bg-gradient-to-r ${selectedName.color} text-white shadow-lg` : 'text-slate-400 hover:text-slate-600'}`}>{l}</button>
+                                                <button key={l} onClick={() => setLang(l)} className={`px-4 sm:px-8 py-2 sm:py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${lang === l ? `bg-gradient-to-r ${selectedName.color} text-white shadow-lg` : 'text-slate-400 hover:text-slate-600'}`}>{l}</button>
                                             ))}
                                         </div>
                                     </div>
                                     
-                                    <div className={`space-y-8 ${lang === 'urdu' ? 'text-right font-quran' : ''}`} dir={lang === 'urdu' ? 'rtl' : 'ltr'}>
+                                    <div className={`space-y-8 ${lang === 'urdu' ? 'text-right font-quran text-lg sm:text-xl md:text-2xl' : ''}`} dir={lang === 'urdu' ? 'rtl' : 'ltr'}>
                                         <div className="p-8 glass-card rounded-[2.5rem] shadow-sm border-none hover:shadow-md transition-shadow">
                                             <h5 className="text-[10px] font-black text-emerald-600 dark:text-emerald-400 uppercase tracking-[0.3em] mb-4 flex items-center gap-2">
                                                 <Globe className="w-4 h-4" /> Linguistic Origin
                                             </h5>
-                                            <p className="text-2xl font-black text-slate-800 dark:text-white leading-tight tracking-tight">{insight[lang].meaning}</p>
+                                            <p className="text-2xl font-black text-slate-800 dark:text-white leading-tight tracking-tight">{insight[lang]?.meaning || "Data missing"}</p>
                                         </div>
                                         
                                         <div className="p-8 glass-card rounded-[2.5rem] shadow-sm border-none hover:shadow-md transition-shadow">
                                             <h5 className="text-[10px] font-black text-emerald-600 dark:text-emerald-400 uppercase tracking-[0.3em] mb-4 flex items-center gap-2">
                                                 <Lightbulb className="w-4 h-4" /> Spiritual Reflection
                                             </h5>
-                                            <p className="text-lg text-slate-600 dark:text-slate-300 font-bold leading-relaxed">{insight[lang].reflection}</p>
+                                            <p className="text-lg text-slate-600 dark:text-slate-300 font-bold leading-relaxed">{insight[lang]?.reflection || "Reflection unavailable"}</p>
                                         </div>
                                         
                                         <div className={`p-10 bg-gradient-to-br ${selectedName.color} rounded-[3rem] text-white shadow-2xl relative group overflow-hidden`}>
                                             <div className="absolute top-0 right-0 p-8 opacity-10 group-hover:rotate-12 transition-transform"><Zap className="w-16 h-16" /></div>
                                             <h5 className="text-[10px] font-black text-white/70 uppercase tracking-[0.3em] mb-4">Practical Application</h5>
-                                            <p className="text-xl font-black leading-tight tracking-tight relative z-10">{insight[lang].application}</p>
+                                            <p className="text-xl font-black leading-tight tracking-tight relative z-10">{insight[lang]?.application || "Application details pending"}</p>
                                         </div>
                                     </div>
                                     

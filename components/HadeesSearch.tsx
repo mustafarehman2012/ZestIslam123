@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Search, BookOpen, Loader2, Sparkles, Volume2, Book, Copy, Share2, Library, ChevronRight } from 'lucide-react';
+import { Search, BookOpen, Loader2, Sparkles, Volume2, Book, Copy, Share2, Library, ChevronRight, Square } from 'lucide-react';
 import { searchHadithByType, generateSharh, playGeneratedAudio, stopGeneratedAudio } from '../services/geminiService';
 import { Hadith, SharhResult } from '../types';
 
@@ -18,6 +18,7 @@ const HadeesSearch: React.FC = () => {
     if (!query.trim()) return;
     setLoading(true);
     setSearched(true);
+    setResults([]);
     setExpandedSharh(null);
     const data = await searchHadithByType(query);
     setResults(data);
@@ -67,15 +68,15 @@ const HadeesSearch: React.FC = () => {
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           placeholder="E.g., 'Rights of neighbors', 'Patience', 'Intentions'..."
-          className="w-full pl-10 pr-40 py-6 rounded-[2.5rem] bg-white dark:bg-slate-900 border-none shadow-2xl shadow-slate-200/50 dark:shadow-none focus:ring-4 focus:ring-emerald-500/10 outline-none transition-all text-xl text-slate-800 dark:text-slate-200 placeholder:text-slate-400 font-medium"
+          className="w-full pl-6 sm:pl-10 pr-[100px] sm:pr-40 py-4 sm:py-6 rounded-[2rem] sm:rounded-[2.5rem] bg-white dark:bg-slate-900 border-none shadow-2xl shadow-slate-200/50 dark:shadow-none focus:ring-4 focus:ring-emerald-500/10 outline-none transition-all text-base sm:text-xl text-slate-800 dark:text-slate-200 placeholder:text-slate-400 font-medium"
         />
-        <div className="absolute inset-y-3 right-3 hidden sm:block">
+        <div className="absolute inset-y-2 right-6 sm:inset-y-3 sm:right-3 flex">
             <button 
                 type="submit"
                 disabled={loading || !query}
-                className="h-full bg-slate-900 dark:bg-emerald-600 hover:bg-emerald-700 text-white px-10 rounded-[1.8rem] font-black uppercase tracking-widest text-xs transition-all disabled:opacity-50 flex items-center gap-3 shadow-xl active:scale-95"
+                className="h-full bg-slate-900 dark:bg-emerald-600 hover:bg-emerald-700 text-white px-4 sm:px-10 rounded-[1.5rem] sm:rounded-[1.8rem] font-black uppercase tracking-widest text-[10px] sm:text-xs transition-all disabled:opacity-50 flex items-center gap-2 sm:gap-3 shadow-xl active:scale-95"
             >
-                {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Search className="w-4 h-4" />}
+                {loading ? <Loader2 className="w-3 h-3 sm:w-4 sm:h-4 animate-spin" /> : <Search className="w-3 h-3 sm:w-4 sm:h-4" />}
                 Seek
             </button>
         </div>
@@ -137,16 +138,22 @@ const HadeesSearch: React.FC = () => {
                         </span>
                     </div>
                     <div className="flex gap-3">
-                        <button onClick={() => playAudio(hadith.arabicText)} className={`p-4 rounded-2xl transition-all shadow-sm ${playingAudioId === hadith.arabicText ? 'bg-red-50 text-red-500' : 'bg-slate-50 dark:bg-slate-800 text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 border border-slate-100 dark:border-slate-700'}`} title="Audio">
-                            {playingAudioId === hadith.arabicText ? <div className="w-5 h-5 bg-current rounded-sm animate-pulse" /> : <Volume2 className="w-5 h-5" />}
-                        </button>
+                        {playingAudioId === hadith.arabicText ? (
+                            <button onClick={() => { stopGeneratedAudio(); setPlayingAudioId(null); }} className="p-4 bg-red-50 dark:bg-red-900/20 text-red-500 hover:bg-red-100 dark:hover:bg-red-900/40 rounded-2xl transition-all border border-red-100 dark:border-red-800" title="Stop Audio">
+                                <Square className="w-5 h-5 fill-current animate-pulse" />
+                            </button>
+                        ) : (
+                            <button onClick={() => playAudio(hadith.arabicText)} className="p-4 bg-slate-50 dark:bg-slate-800 text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 rounded-2xl transition-all border border-slate-100 dark:border-slate-700" title="Play Audio">
+                                <Volume2 className="w-5 h-5" />
+                            </button>
+                        )}
                         <button onClick={() => copyHadith(hadith)} className="p-4 bg-slate-50 dark:bg-slate-800 text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 rounded-2xl transition-all border border-slate-100 dark:border-slate-700" title="Copy"><Copy className="w-5 h-5" /></button>
                     </div>
                 </div>
                 
                 <div className="bg-slate-50/50 dark:bg-slate-800/30 rounded-[3rem] p-8 md:p-12 mb-10 border border-slate-50 dark:border-slate-800 relative overflow-hidden">
                     <div className="absolute top-0 left-0 w-full h-full bg-[url('https://www.transparenttextures.com/patterns/arabesque.png')] opacity-[0.03] pointer-events-none"></div>
-                    <p className="text-right font-quran text-3xl md:text-4xl lg:text-5xl text-slate-800 dark:text-white leading-[2.5]" dir="rtl">
+                    <p className="text-right font-quran text-2xl md:text-4xl lg:text-5xl text-slate-800 dark:text-white leading-[2.5]" dir="rtl">
                       {hadith.arabicText}
                     </p>
                 </div>
@@ -188,12 +195,12 @@ const HadeesSearch: React.FC = () => {
                     {expandedSharh?.idx === idx && (
                         <div className="mt-8 bg-slate-50 dark:bg-slate-800/40 rounded-[3rem] border border-slate-100 dark:border-slate-800 overflow-hidden animate-fade-in-up">
                             <div className="p-8 md:p-10">
-                                <div className="bg-white dark:bg-slate-900 p-1.5 rounded-2xl flex mb-10 inline-flex shadow-sm">
+                                <div className="bg-white dark:bg-slate-900 p-1.5 rounded-2xl flex flex-wrap sm:inline-flex gap-1 sm:gap-0 mb-10 shadow-sm">
                                     {['english', 'urdu', 'hinglish'].map((l) => (
                                         <button
                                             key={l}
                                             onClick={() => setExpandedSharh(prev => prev ? {...prev, lang: l as any} : null)}
-                                            className={`px-6 py-2 rounded-xl text-[10px] font-black uppercase tracking-[0.2em] transition-all ${
+                                            className={`px-4 sm:px-6 py-2 rounded-xl text-[10px] font-black uppercase tracking-[0.2em] transition-all ${
                                                 expandedSharh.lang === l 
                                                 ? 'bg-emerald-600 text-white shadow-lg' 
                                                 : 'text-slate-400 hover:text-slate-600'
@@ -204,7 +211,7 @@ const HadeesSearch: React.FC = () => {
                                     ))}
                                 </div>
 
-                                <p className={`text-slate-800 dark:text-slate-200 text-xl md:text-2xl font-medium mb-10 leading-relaxed ${expandedSharh.lang === 'urdu' ? 'font-quran text-right' : ''}`} dir={expandedSharh.lang === 'urdu' ? 'rtl' : 'ltr'}>
+                                <p className={`text-slate-800 dark:text-slate-200 text-xl md:text-2xl font-medium mb-10 leading-relaxed ${expandedSharh.lang === 'urdu' ? 'font-quran text-right text-lg sm:text-xl md:text-2xl' : ''}`} dir={expandedSharh.lang === 'urdu' ? 'rtl' : 'ltr'}>
                                     {expandedSharh.data[expandedSharh.lang].paragraph}
                                 </p>
                                 
@@ -212,7 +219,7 @@ const HadeesSearch: React.FC = () => {
                                     {expandedSharh.data[expandedSharh.lang].points.map((p, i) => (
                                         <div key={i} className={`flex items-start gap-4 p-5 bg-white dark:bg-slate-900 rounded-[2rem] border border-slate-100 dark:border-slate-700 shadow-sm ${expandedSharh.lang === 'urdu' ? 'flex-row-reverse text-right' : ''}`}>
                                             <div className="w-8 h-8 rounded-full bg-emerald-100 dark:bg-emerald-900 text-emerald-600 dark:text-emerald-400 flex items-center justify-center text-[10px] font-black shrink-0 mt-0.5 shadow-inner">{i+1}</div>
-                                            <span className={`text-slate-600 dark:text-slate-400 font-medium ${expandedSharh.lang === 'urdu' ? 'font-quran text-xl' : 'text-sm'}`}>{p}</span>
+                                            <span className={`text-slate-600 dark:text-slate-400 font-medium ${expandedSharh.lang === 'urdu' ? 'font-quran text-lg sm:text-xl' : 'text-sm'}`}>{p}</span>
                                         </div>
                                     ))}
                                 </div>

@@ -1,146 +1,163 @@
-
-import { supabase } from './supabaseClient';
+import { auth, db } from './firebaseClient';
+import { 
+    createUserWithEmailAndPassword, 
+    signInWithEmailAndPassword, 
+    sendPasswordResetEmail, 
+    updatePassword, 
+    onAuthStateChanged, 
+    signOut, 
+    updateProfile
+} from 'firebase/auth';
+import { 
+    collection, 
+    doc, 
+    setDoc, 
+    getDocs, 
+    query, 
+    where, 
+    orderBy, 
+    updateDoc, 
+    deleteDoc, 
+    addDoc 
+} from 'firebase/firestore';
 import { UserProfile, Message, Conversation } from '../types';
 
 // --- AUTHENTICATION ---
 
 export const signUpUser = async (email: string, password: string, name: string): Promise<{ user: UserProfile | null, error: string | null }> => {
-    if (supabase) {
-        // Supabase Implementation
-        const { data, error } = await supabase.auth.signUp({
-            email,
-            password,
-            options: {
-                // This sends the name to Supabase user_metadata
-                data: { name }
-            }
-        });
-        
-        if (error) {
-             console.warn("Supabase auth failed, falling back to local:", error.message);
-             return { user: null, error: error.message };
-        } else if (data.user) {
-            return {
-                user: {
-                    name: data.user.user_metadata.name || name,
-                    email: data.user.email || email,
-                    joinedDate: new Date(data.user.created_at)
-                },
-                error: null
-            };
-        }
-    } 
-    
-    // Local Storage Fallback
     try {
-        const existing = localStorage.getItem(`zestislam_user_${email}`);
-        if (existing) return { user: null, error: "User already exists locally." };
-
-        const newUser: UserProfile = {
-            name,
-            email,
-            joinedDate: new Date()
+        const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+        await updateProfile(userCredential.user, { displayName: name });
+        
+        return {
+            user: {
+                name: name,
+                email: userCredential.user.email || email,
+                joinedDate: new Date(userCredential.user.metadata.creationTime || Date.now())
+            },
+            error: null
         };
-        localStorage.setItem(`zestislam_user_${email}`, JSON.stringify(newUser));
-        return { user: newUser, error: null };
-    } catch (e) {
-        return { user: null, error: "Local storage error" };
+    } catch (error: any) {
+        console.warn("Firebase auth failed, falling back to local:", error.message);
+        
+        // Local Storage Fallback
+        try {
+            const existing = localStorage.getItem(`zestislam_user_${email}`);
+            if (existing) return { user: null, error: "User already exists locally." };
+
+            const newUser: UserProfile = {
+                name,
+                email,
+                joinedDate: new Date()
+            };
+            localStorage.setItem(`zestislam_user_${email}`, JSON.stringify(newUser));
+            return { user: newUser, error: null };
+        } catch (e) {
+            return { user: null, error: "Local storage error" };
+        }
     }
 };
 
 export const signInUser = async (email: string, password: string): Promise<{ user: UserProfile | null, error: string | null }> => {
-    if (supabase) {
-        const { data, error } = await supabase.auth.signInWithPassword({ email, password });
-        if (error) {
-            console.warn("Supabase signin failed:", error.message);
-             // Don't fallback to local on wrong password
-             if (error.message.includes("Invalid login")) {
-                 return { user: null, error: "Invalid email or password" };
-             }
-        } else if (data.user) {
-            return {
-                user: {
-                    name: data.user.user_metadata.name || email.split('@')[0],
-                    email: data.user.email || email,
-                    joinedDate: new Date(data.user.created_at)
-                },
-                error: null
-            };
-        }
-    }
-
     try {
-        const stored = localStorage.getItem(`zestislam_user_${email}`);
-        if (stored) {
-            const user = JSON.parse(stored);
-            return { user, error: null };
+        const userCredential = await signInWithEmailAndPassword(auth, email, password);
+        return {
+            user: {
+                name: userCredential.user.displayName || email.split('@')[0],
+                email: userCredential.user.email || email,
+                joinedDate: new Date(userCredential.user.metadata.creationTime || Date.now())
+            },
+            error: null
+        };
+    } catch (error: any) {
+        console.warn("Firebase signin failed:", error.message);
+        if (error.code === 'auth/invalid-credential' || error.code === 'auth/wrong-password') {
+            return { user: null, error: "Invalid email or password" };
         }
-        return { user: null, error: "User not found or invalid credentials." };
-    } catch (e) {
-        return { user: null, error: "Login failed" };
+        
+        // Local Storage Fallback
+        try {
+            const stored = localStorage.getItem(`zestislam_user_${email}`);
+            if (stored) {
+                const user = JSON.parse(stored);
+                return { user, error: null };
+            }
+            return { user: null, error: "User not found or invalid credentials." };
+        } catch (e) {
+            return { user: null, error: "Login failed" };
+        }
     }
 };
 
 export const resetUserPassword = async (email: string): Promise<{ success: boolean, error: string | null }> => {
-    if (supabase) {
-        const { error } = await supabase.auth.resetPasswordForEmail(email, {
-            redirectTo: window.location.origin, 
-        });
-        
-        if (error) return { success: false, error: error.message };
+    try {
+        const actionCodeSettings = {
+            url: 'https://zestislamaiapp.netlify.app/',
+            handleCodeInApp: false,
+        };
+        await sendPasswordResetEmail(auth, email, actionCodeSettings);
         return { success: true, error: null };
+    } catch (error: any) {
+        return { success: false, error: error.message };
     }
-    return { success: true, error: null };
 }
 
 export const updateUserPassword = async (password: string) => {
-    if (supabase) {
-        const { error } = await supabase.auth.updateUser({
-            password: password
-        });
-
-        if (error) {
+    if (auth.currentUser) {
+        try {
+            await updatePassword(auth.currentUser, password);
+            return { success: true, error: null };
+        } catch (error: any) {
             return { success: false, error: error.message };
         }
-        return { success: true, error: null };
     }
-    return { success: false, error: "Service unavailable" };
+    return { success: false, error: "User not logged in" };
 };
 
 export const subscribeToAuthChanges = (callback: (event: string, session: any) => void) => {
-    if (supabase) {
-        const { data } = supabase.auth.onAuthStateChange((event, session) => {
-            callback(event, session);
-        });
-        return data.subscription;
-    }
-    return null;
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+        if (user) {
+            callback('SIGNED_IN', { user });
+        } else {
+            callback('SIGNED_OUT', null);
+        }
+    });
+    return { unsubscribe };
 }
 
 export const signOutUser = async () => {
-    if (supabase) {
-        await supabase.auth.signOut();
+    try {
+        await signOut(auth);
+    } catch (error) {
+        console.error("Sign out error", error);
     }
 };
 
 // --- CONVERSATION MANAGEMENT ---
 
 export const getUserConversations = async (email: string): Promise<Conversation[]> => {
-    if (supabase) {
-        const { data, error } = await supabase
-            .from('conversations')
-            .select('*')
-            .eq('user_email', email)
-            .order('updated_at', { ascending: false });
-        
-        if (!error && data) {
-            return data.map((d: any) => ({
-                id: d.id,
-                title: d.title,
-                lastMessage: d.last_message || 'No messages',
-                timestamp: new Date(d.created_at)
-            }));
+    try {
+        const q = query(
+            collection(db, 'conversations'), 
+            where('user_email', '==', email),
+            orderBy('updated_at', 'desc')
+        );
+        const querySnapshot = await getDocs(q);
+        const conversations: Conversation[] = [];
+        querySnapshot.forEach((doc) => {
+            const data = doc.data();
+            conversations.push({
+                id: doc.id,
+                title: data.title,
+                lastMessage: data.last_message || 'No messages',
+                timestamp: new Date(data.created_at)
+            });
+        });
+        if (conversations.length > 0) {
+            return conversations;
         }
+    } catch (error) {
+        console.warn("Firebase get conversations failed", error);
     }
 
     const stored = localStorage.getItem(`zestislam_conversations_${email}`);
@@ -161,18 +178,17 @@ export const createConversation = async (email: string, title: string, id?: stri
         timestamp: new Date()
     };
 
-    if (supabase) {
-        const { data, error } = await supabase.from('conversations').insert({
-            id: newConv.id,
+    try {
+        await setDoc(doc(db, 'conversations', newConv.id), {
             user_email: email,
             title: title,
             created_at: newConv.timestamp.toISOString(),
-            updated_at: newConv.timestamp.toISOString()
-        }).select();
-
-        if (!error && data) {
-            return newConv;
-        }
+            updated_at: newConv.timestamp.toISOString(),
+            last_message: ''
+        });
+        return newConv;
+    } catch (error) {
+        console.warn("Firebase create conversation failed", error);
     }
 
     const existing = await getUserConversations(email);
@@ -182,8 +198,12 @@ export const createConversation = async (email: string, title: string, id?: stri
 }
 
 export const updateConversationTitle = async (email: string, conversationId: string, newTitle: string) => {
-    if (supabase) {
-        await supabase.from('conversations').update({ title: newTitle }).eq('id', conversationId);
+    try {
+        await updateDoc(doc(db, 'conversations', conversationId), {
+            title: newTitle
+        });
+    } catch (error) {
+        console.warn("Firebase update conversation title failed", error);
     }
     
     const existing = await getUserConversations(email);
@@ -192,9 +212,17 @@ export const updateConversationTitle = async (email: string, conversationId: str
 }
 
 export const deleteConversation = async (email: string, conversationId: string) => {
-    if (supabase) {
-        await supabase.from('conversations').delete().eq('id', conversationId);
-        await supabase.from('messages').delete().eq('conversation_id', conversationId);
+    try {
+        await deleteDoc(doc(db, 'conversations', conversationId));
+        
+        // Delete messages
+        const q = query(collection(db, 'messages'), where('conversation_id', '==', conversationId));
+        const querySnapshot = await getDocs(q);
+        querySnapshot.forEach(async (messageDoc) => {
+            await deleteDoc(doc(db, 'messages', messageDoc.id));
+        });
+    } catch (error) {
+        console.warn("Firebase delete conversation failed", error);
     }
 
     const existing = await getUserConversations(email);
@@ -206,22 +234,29 @@ export const deleteConversation = async (email: string, conversationId: string) 
 // --- MESSAGE MANAGEMENT ---
 
 export const getConversationMessages = async (conversationId: string): Promise<Message[]> => {
-    if (supabase) {
-        const { data, error } = await supabase
-            .from('messages')
-            .select('*')
-            .eq('conversation_id', conversationId)
-            .order('created_at', { ascending: true });
-        
-        if (!error && data) {
-            return data.map((d: any) => ({
-                id: d.id,
-                role: d.role,
-                content: d.content,
-                timestamp: new Date(d.created_at),
-                conversationId: d.conversation_id
-            }));
+    try {
+        const q = query(
+            collection(db, 'messages'), 
+            where('conversation_id', '==', conversationId),
+            orderBy('created_at', 'asc')
+        );
+        const querySnapshot = await getDocs(q);
+        const messages: Message[] = [];
+        querySnapshot.forEach((doc) => {
+            const data = doc.data();
+            messages.push({
+                id: doc.id,
+                role: data.role,
+                content: data.content,
+                timestamp: new Date(data.created_at),
+                conversationId: data.conversation_id
+            });
+        });
+        if (messages.length > 0) {
+            return messages;
         }
+    } catch (error) {
+        console.warn("Firebase get messages failed", error);
     }
 
     const stored = localStorage.getItem(`zestislam_messages_${conversationId}`);
@@ -239,20 +274,21 @@ export const saveUserChatMessage = async (email: string, conversationId: string,
         await createConversation(email, title, conversationId);
     }
 
-    if (supabase) {
-        await supabase.from('messages').insert({
+    try {
+        await setDoc(doc(db, 'messages', message.id), {
             conversation_id: conversationId,
             user_email: email,
             role: message.role,
             content: message.content,
-            created_at: message.timestamp.toISOString(),
-            id: message.id 
+            created_at: message.timestamp.toISOString()
         });
         
-        await supabase.from('conversations').update({
+        await updateDoc(doc(db, 'conversations', conversationId), {
             last_message: message.content.substring(0, 50),
             updated_at: new Date().toISOString()
-        }).eq('id', conversationId);
+        });
+    } catch (error) {
+        console.warn("Firebase save message failed", error);
     }
 
     const history = await getConversationMessages(conversationId);
@@ -285,29 +321,18 @@ export const saveUserChatMessage = async (email: string, conversationId: string,
 // --- CONTACT FORM ---
 
 export const sendContactMessage = async (name: string, email: string, message: string): Promise<{ success: boolean, error?: string }> => {
-    // 1. Try to save to Supabase 'contact_messages' table
-    if (supabase) {
-        try {
-            const { error } = await supabase.from('contact_messages').insert({
-                name,
-                email,
-                message,
-                created_at: new Date().toISOString()
-            });
-            
-            if (error) {
-                // Log the actual error message clearly so we know why it failed (e.g. table missing)
-                // Returning success: false triggers the mailto fallback in App.tsx
-                console.warn("Supabase Contact Error (Switching to Mailto):", error.message || JSON.stringify(error));
-                return { success: false, error: error.message };
-            }
-            return { success: true };
-        } catch (e: any) {
-            console.error("Supabase Unexpected Error:", e);
-            return { success: false, error: e.message || "Unknown error" };
-        }
+    try {
+        await addDoc(collection(db, 'contact_messages'), {
+            name,
+            email,
+            message,
+            created_at: new Date().toISOString()
+        });
+        return { success: true };
+    } catch (error: any) {
+        console.error("Firebase contact message error:", error);
+        
+        // 2. Fallback to mailto link approach (handled in App.tsx)
+        return { success: false, error: error.message };
     }
-    
-    // If Supabase is not connected, return false to trigger mailto fallback
-    return { success: false, error: "Database not connected" };
-}
+};

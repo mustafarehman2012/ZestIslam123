@@ -1,0 +1,15 @@
+[
+  {
+    "relation": [
+      "delegate_permission/common.handle_all_urls",
+      "delegate_permission/common.get_login_creds"
+    ],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "co.median.android.zppdjlq",
+      "sha256_cert_fingerprints": [
+        "24:79:79:16:6B:A9:C3:05:40:22:2C:F2:11:6D:60:A3:7D:4B:F7:FF:7A:54:64:1B:63:56:27:9B:45:DB:7C:A8"
+      ]
+    }
+  }
+]

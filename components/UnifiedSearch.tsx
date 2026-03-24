@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import { Search, Book, Sparkles, Loader2, Volume2, BookOpen, Globe, ArrowRight, LayoutGrid, Library, Gauge, ChevronRight, ExternalLink } from 'lucide-react';
-import { searchQuranByType, searchHadithByType, searchIslamicWeb, playGeneratedAudio } from '../services/geminiService';
+import { Search, Book, Sparkles, Loader2, Volume2, BookOpen, Globe, ArrowRight, LayoutGrid, Library, Gauge, ChevronRight, ExternalLink, Square } from 'lucide-react';
+import { searchQuranByType, searchHadithByType, searchIslamicWeb, playGeneratedAudio, stopGeneratedAudio } from '../services/geminiService';
 import { QuranVerse, Hadith } from '../types';
 import { marked } from 'marked';
 
@@ -15,6 +15,7 @@ const UnifiedSearch: React.FC = () => {
   const [searched, setSearched] = useState(false);
   const [activeTab, setActiveTab] = useState<Tab>('ALL');
   const [playbackSpeed, setPlaybackSpeed] = useState<number>(1.0);
+  const [playingAudioId, setPlayingAudioId] = useState<string | null>(null);
 
   const handleSearch = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -26,65 +27,83 @@ const UnifiedSearch: React.FC = () => {
     setQuranResults([]);
     setHadithResults([]);
     
-    const [qData, hData, wData] = await Promise.all([
-        searchQuranByType(query),
-        searchHadithByType(query),
-        searchIslamicWeb(query)
-    ]);
+    try {
+        // Run sequentially to avoid rate limits (429 RESOURCE_EXHAUSTED)
+        try {
+            const qData = await searchQuranByType(query);
+            setQuranResults(qData);
+        } catch (e) { console.error("Quran search failed:", e); }
 
-    setQuranResults(qData);
-    setHadithResults(hData);
-    setWebData(wData);
-    setLoading(false);
+        try {
+            const hData = await searchHadithByType(query);
+            setHadithResults(hData);
+        } catch (e) { console.error("Hadith search failed:", e); }
+
+        try {
+            const wData = await searchIslamicWeb(query);
+            setWebData(wData);
+        } catch (e) { console.error("Web search failed:", e); }
+
+    } finally {
+        setLoading(false);
+    }
   };
 
   const playAudio = async (text: string, type: 'verse' | 'hadith' = 'verse') => {
-    await playGeneratedAudio(text, type, playbackSpeed);
+    if (playingAudioId === text) {
+        stopGeneratedAudio();
+        setPlayingAudioId(null);
+        return;
+    }
+    setPlayingAudioId(text);
+    await playGeneratedAudio(text, type, playbackSpeed, () => {
+        setPlayingAudioId(null);
+    });
   };
 
   const renderWebContent = () => {
       if (!webData || (!webData.text && webData.chunks.length === 0)) return null;
       return (
-        <div className="glass-card p-6 md:p-14 rounded-[3rem] md:rounded-[4rem] relative overflow-hidden shadow-2xl animate-fade-in-up border border-slate-200 dark:border-slate-800/50">
+        <div className="bg-[#020617] dark:bg-slate-900 p-6 md:p-14 rounded-[3rem] md:rounded-[4rem] text-white relative overflow-hidden shadow-2xl animate-fade-in-up border border-slate-800/50">
             <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-emerald-500/5 rounded-full blur-[120px] -translate-y-1/2 translate-x-1/2"></div>
             
             <div className="relative z-10">
                 <div className="flex items-center gap-4 mb-6 md:mb-10">
-                    <div className="w-10 h-10 md:w-12 md:h-12 bg-emerald-600 rounded-2xl flex items-center justify-center shadow-xl shadow-emerald-900/20 text-white"><Globe className="w-5 h-5 md:w-6 md:h-6" /></div>
+                    <div className="w-10 h-10 md:w-12 md:h-12 bg-emerald-600 rounded-2xl flex items-center justify-center shadow-xl shadow-emerald-900/20"><Globe className="w-5 h-5 md:w-6 md:h-6" /></div>
                     <div>
-                        <h3 className="text-xl md:text-2xl font-black uppercase tracking-tighter text-slate-900 dark:text-white">Synthesized Insights</h3>
-                        <p className="text-[9px] md:text-[10px] text-emerald-600 dark:text-emerald-400 font-bold uppercase tracking-[0.4em] mt-1">Cross-referenced AI Analysis</p>
+                        <h3 className="text-xl md:text-2xl font-black uppercase tracking-tighter">Synthesized Insights</h3>
+                        <p className="text-[9px] md:text-[10px] text-emerald-400 font-bold uppercase tracking-[0.4em] mt-1">Cross-referenced AI Analysis</p>
                     </div>
                 </div>
 
                 {webData.text && (
                     <div className="mb-8 md:mb-12">
                         <div 
-                            className="prose prose-slate dark:prose-invert prose-emerald max-w-none 
-                                     text-slate-800 dark:text-slate-300 leading-[1.7] md:leading-[1.8] text-base md:text-lg font-medium 
+                            className="prose prose-invert prose-emerald max-w-none 
+                                     text-slate-300 leading-[1.7] md:leading-[1.8] text-base md:text-lg font-medium 
                                      [&>p]:mb-4 md:[&>p]:mb-6 [&>ul]:mb-6 [&>ol]:mb-6 [&>li]:mb-2 
                                      [&>h1]:text-2xl md:[&>h1]:text-3xl [&>h1]:font-black [&>h1]:mb-6
                                      [&>h2]:text-xl md:[&>h2]:text-2xl [&>h2]:font-black [&>h2]:mb-4
                                      [&>h3]:text-lg md:[&>h3]:text-xl [&>h3]:font-black [&>h3]:mb-3
-                                     [&>blockquote]:border-l-4 [&>blockquote]:border-emerald-500 [&>blockquote]:pl-4 md:[&>blockquote]:pl-6 [&>blockquote]:italic [&>blockquote]:bg-slate-50 dark:bg-white/5 [&>blockquote]:py-4 [&>blockquote]:rounded-r-2xl"
+                                     [&>blockquote]:border-l-4 [&>blockquote]:border-emerald-500 [&>blockquote]:pl-4 md:[&>blockquote]:pl-6 [&>blockquote]:italic [&>blockquote]:bg-white/5 [&>blockquote]:py-4 [&>blockquote]:rounded-r-2xl"
                             dangerouslySetInnerHTML={{ __html: marked.parse(webData.text) as string }}
                         />
                     </div>
                 )}
 
-                <div className="pt-8 md:pt-10 border-t border-slate-100 dark:border-white/5">
-                    <h4 className="text-[9px] md:text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-[0.5em] mb-4 md:mb-6">Verified Source Map</h4>
+                <div className="pt-8 md:pt-10 border-t border-white/5">
+                    <h4 className="text-[9px] md:text-[10px] font-black text-slate-500 uppercase tracking-[0.5em] mb-4 md:mb-6">Verified Source Map</h4>
                     <div className="grid gap-3 md:gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
                         {webData.chunks.map((chunk, i) => {
                                 const data = chunk.web;
                                 if (!data) return null;
                                 return (
-                                    <a key={i} href={data.uri} target="_blank" rel="noopener noreferrer" className="block p-5 md:p-6 bg-slate-50 dark:bg-white/5 hover:bg-emerald-50 dark:hover:bg-white/10 rounded-[2rem] md:rounded-[2.5rem] transition-all border border-slate-100 dark:border-white/5 group backdrop-blur-sm hover:border-emerald-500/30">
+                                    <a key={i} href={data.uri} target="_blank" rel="noopener noreferrer" className="block p-5 md:p-6 bg-white/5 hover:bg-white/10 rounded-[2rem] md:rounded-[2.5rem] transition-all border border-white/5 group backdrop-blur-sm hover:border-emerald-500/30">
                                         <div className="flex justify-between items-start mb-2 md:mb-3">
-                                            <h4 className="font-black text-slate-800 dark:text-white text-[10px] md:text-xs truncate group-hover:text-emerald-600 transition-colors uppercase tracking-widest">{data.title}</h4>
-                                            <ExternalLink className="w-3.5 h-3.5 md:w-4 md:h-4 text-slate-400 group-hover:text-emerald-600 transition-colors" />
+                                            <h4 className="font-black text-white text-[10px] md:text-xs truncate group-hover:text-emerald-400 transition-colors uppercase tracking-widest">{data.title}</h4>
+                                            <ExternalLink className="w-3.5 h-3.5 md:w-4 md:h-4 text-slate-500 group-hover:text-white transition-colors" />
                                         </div>
-                                        <p className="text-[8px] md:text-[9px] text-slate-400 dark:text-slate-400 truncate font-mono opacity-60 group-hover:opacity-100 transition-opacity">{data.uri}</p>
+                                        <p className="text-[8px] md:text-[9px] text-slate-400 truncate font-mono opacity-60 group-hover:opacity-100 transition-opacity">{data.uri}</p>
                                     </a>
                                 )
                         })}
@@ -101,9 +120,17 @@ const UnifiedSearch: React.FC = () => {
             <div key={`q-${idx}`} className="bg-white dark:bg-slate-900 p-6 md:p-10 rounded-[2.5rem] md:rounded-[3.5rem] border border-slate-100 dark:border-slate-800 shadow-sm hover:shadow-xl transition-all group overflow-hidden animate-fade-in-up" style={{animationDelay: `${idx * 0.1}s`}}>
                 <div className="flex justify-between items-start mb-6 md:mb-8">
                     <span className="text-[8px] md:text-[10px] font-black text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/30 px-4 md:px-6 py-2 md:py-2.5 rounded-full uppercase tracking-[0.2em] border border-emerald-100 dark:border-emerald-800">{verse.surahName} • V{verse.verseNumber}</span>
-                    <button onClick={() => playAudio(verse.arabicText, 'verse')} className="p-3 md:p-3.5 bg-slate-50 dark:bg-slate-800 text-slate-400 hover:text-emerald-600 transition-all rounded-2xl shadow-inner border border-slate-100 dark:border-slate-700"><Volume2 className="w-4 h-4 md:w-5 md:h-5" /></button>
+                    {playingAudioId === verse.arabicText ? (
+                        <button onClick={() => { stopGeneratedAudio(); setPlayingAudioId(null); }} className="p-3 md:p-3.5 bg-red-50 dark:bg-red-900/20 text-red-500 hover:bg-red-100 dark:hover:bg-red-900/40 transition-all rounded-2xl shadow-inner border border-red-100 dark:border-red-800" title="Stop Audio">
+                            <Square className="w-4 h-4 md:w-5 md:h-5 fill-current animate-pulse" />
+                        </button>
+                    ) : (
+                        <button onClick={() => playAudio(verse.arabicText, 'verse')} className="p-3 md:p-3.5 bg-slate-50 dark:bg-slate-800 text-slate-400 hover:text-emerald-600 transition-all rounded-2xl shadow-inner border border-slate-100 dark:border-slate-700" title="Play Audio">
+                            <Volume2 className="w-4 h-4 md:w-5 md:h-5" />
+                        </button>
+                    )}
                 </div>
-                <p className="text-right font-quran text-3xl md:text-5xl text-slate-800 dark:text-white mb-6 md:mb-10 leading-[2.2] md:leading-[2.5]" dir="rtl">{verse.arabicText}</p>
+                <p className="text-right font-quran text-2xl md:text-4xl lg:text-5xl text-slate-800 dark:text-white mb-6 md:mb-10 leading-[2.2] md:leading-[2.5]" dir="rtl">{verse.arabicText}</p>
                 <p className="text-slate-600 dark:text-slate-300 text-lg md:text-xl font-medium leading-relaxed mb-6 md:mb-8 font-serif">{verse.translation}</p>
                 <div className="bg-slate-50/50 dark:bg-slate-800/30 p-4 md:p-6 rounded-[1.5rem] md:rounded-[2rem] border border-slate-100 dark:border-slate-800">
                     <p className="text-slate-400 text-[10px] md:text-xs italic font-medium leading-relaxed">Context: {verse.explanation}</p>
@@ -122,9 +149,17 @@ const UnifiedSearch: React.FC = () => {
                         <span className="text-[8px] md:text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] bg-slate-100 dark:bg-slate-800 px-4 md:px-6 py-2 md:py-2.5 rounded-full">{hadith.book} • #{hadith.hadithNumber}</span>
                         <span className={`text-[8px] md:text-[10px] font-black uppercase tracking-[0.2em] px-3 md:px-5 py-2 md:py-2.5 rounded-full border ${hadith.grade.toLowerCase().includes('sahih') ? 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-400 border-emerald-100 dark:border-emerald-800' : 'bg-amber-50 text-amber-700 border-amber-100'}`}>{hadith.grade}</span>
                     </div>
-                    <button onClick={() => playAudio(hadith.arabicText, 'hadith')} className="p-3 md:p-3.5 bg-slate-50 dark:bg-slate-800 text-slate-400 hover:text-emerald-600 transition-all rounded-2xl shadow-inner border border-slate-100 dark:border-slate-700"><Volume2 className="w-4 h-4 md:w-5 md:h-5" /></button>
+                    {playingAudioId === hadith.arabicText ? (
+                        <button onClick={() => { stopGeneratedAudio(); setPlayingAudioId(null); }} className="p-3 md:p-3.5 bg-red-50 dark:bg-red-900/20 text-red-500 hover:bg-red-100 dark:hover:bg-red-900/40 transition-all rounded-2xl shadow-inner border border-red-100 dark:border-red-800" title="Stop Audio">
+                            <Square className="w-4 h-4 md:w-5 md:h-5 fill-current animate-pulse" />
+                        </button>
+                    ) : (
+                        <button onClick={() => playAudio(hadith.arabicText, 'hadith')} className="p-3 md:p-3.5 bg-slate-50 dark:bg-slate-800 text-slate-400 hover:text-emerald-600 transition-all rounded-2xl shadow-inner border border-slate-100 dark:border-slate-700" title="Play Audio">
+                            <Volume2 className="w-4 h-4 md:w-5 md:h-5" />
+                        </button>
+                    )}
                 </div>
-                <p className="text-right font-quran text-2xl md:text-4xl text-slate-800 dark:text-white mb-6 md:mb-10 leading-[2.2] md:leading-[2.5]" dir="rtl">{hadith.arabicText}</p>
+                <p className="text-right font-quran text-2xl md:text-4xl lg:text-5xl text-slate-800 dark:text-white mb-6 md:mb-10 leading-[2.2] md:leading-[2.5]" dir="rtl">{hadith.arabicText}</p>
                 <p className="text-slate-600 dark:text-slate-300 text-lg md:text-xl font-medium leading-relaxed font-serif">{hadith.translation}</p>
             </div>
         ))}
@@ -152,7 +187,7 @@ const UnifiedSearch: React.FC = () => {
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           placeholder="E.g., 'What does Islam say about mental peace?'"
-          className="w-full px-6 py-5 md:py-6 pl-12 md:pl-16 rounded-[2rem] md:rounded-[2.5rem] bg-white dark:bg-slate-900 border-none shadow-2xl shadow-slate-200/50 dark:shadow-none focus:ring-4 focus:ring-emerald-500/10 outline-none transition-all text-base md:text-xl text-slate-900 dark:text-white placeholder:text-slate-400 font-medium"
+          className="w-full px-6 py-5 md:py-6 pl-12 md:pl-16 rounded-[2rem] md:rounded-[2.5rem] bg-white dark:bg-slate-900 border-none shadow-2xl shadow-slate-200/50 dark:shadow-none focus:ring-4 focus:ring-emerald-500/10 outline-none transition-all text-base md:text-xl text-slate-800 dark:text-white placeholder:text-slate-400 font-medium"
         />
         <Search className="absolute left-4 md:left-6 top-1/2 -translate-y-1/2 w-5 h-5 md:w-6 md:h-6 text-slate-300 group-focus-within:text-emerald-500 transition-colors" />
         <button 
@@ -206,7 +241,7 @@ const UnifiedSearch: React.FC = () => {
                         <select 
                             value={playbackSpeed}
                             onChange={(e) => setPlaybackSpeed(parseFloat(e.target.value))}
-                            className="bg-transparent text-[9px] md:text-[10px] font-black text-slate-900 dark:text-slate-300 border-none focus:ring-0 cursor-pointer py-1 uppercase tracking-widest"
+                            className="bg-transparent text-[9px] md:text-[10px] font-black text-slate-600 dark:text-slate-300 border-none focus:ring-0 cursor-pointer py-1 uppercase tracking-widest"
                         >
                             <option value="0.75">Slow (0.75x)</option>
                             <option value="1">Normal (1.0x)</option>
